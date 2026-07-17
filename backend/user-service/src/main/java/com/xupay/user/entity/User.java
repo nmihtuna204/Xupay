@@ -108,12 +108,17 @@ public class User {
     // Business Methods
     
     /**
-     * Check if user can transact based on KYC status and account state
+     * Check if the account is in a state that permits transacting.
+     *
+     * Note: KYC tier gates transaction LIMITS (via transaction_limits), it does
+     * not gate the ability to transact at all — an unverified TIER_0 user may
+     * still transact within the low TIER_0 limits, and completing KYC unlocks
+     * higher tiers. A REJECTED KYC, however, blocks transacting.
      */
     public boolean canTransact() {
-        return isActive 
-            && !isSuspended 
-            && kycStatus == KycStatus.APPROVED;
+        return isActive
+            && !isSuspended
+            && kycStatus != KycStatus.REJECTED;
     }
     
     /**

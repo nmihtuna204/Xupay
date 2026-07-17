@@ -56,7 +56,7 @@ public class KycServiceImpl implements KycService {
                 .fileUrl(request.fileUrl())
                 .mimeType(request.mimeType())
                 .fileSizeBytes(request.fileSizeBytes())
-                .verificationStatus("pending")
+                .verificationStatus("PENDING")
                 .expiresAt(OffsetDateTime.now().plusYears(DOCUMENT_EXPIRY_YEARS))
                 .build();
 
@@ -143,7 +143,7 @@ public class KycServiceImpl implements KycService {
         log.debug("Fetching pending KYC documents for admin queue");
         
         List<KycDocument> documents = kycDocumentRepository
-                .findByVerificationStatusOrderByCreatedAtAsc("pending");
+                .findByVerificationStatusOrderByCreatedAtAsc("PENDING");
         
         return kycDocumentMapper.toResponseList(documents);
     }
@@ -157,7 +157,7 @@ public class KycServiceImpl implements KycService {
         
         for (KycDocument doc : expiredDocs) {
             if (doc.isPending() || doc.isApproved()) {
-                doc.setVerificationStatus("expired");
+                doc.setVerificationStatus("EXPIRED");
                 log.info("Marked KYC document {} as expired", doc.getId());
             }
         }

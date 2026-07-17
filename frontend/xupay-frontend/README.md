@@ -25,6 +25,15 @@ types/          Shared TypeScript DTO/domain types
 
 Data flows one way: **page → hook → client → REST API**. Components never call axios directly.
 
+### Page status
+
+| Page | Data source |
+|---|---|
+| `/login`, `/register` | **Live API** (User Service) |
+| `/wallets` | **Live API** — create wallet, real ledger balance, deposit/withdraw, P2P transfer, live history |
+| `/profile` | **Live API** (User Service profile) |
+| `/dashboard`, `/transactions`, `/analytics`, `/fraud-*`, `/compliance/*` | UI showcase with mock data (visual demo of the design system) |
+
 ## Run
 
 ```bash

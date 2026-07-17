@@ -52,9 +52,11 @@ public class KycDocument {
     @Column(name = "mime_type", length = 100)
     private String mimeType;
 
+    // Values must match the DB CHECK constraint chk_verification_status
+    // (PENDING, APPROVED, REJECTED, EXPIRED) — uppercase.
     @Column(name = "verification_status", nullable = false, length = 20)
     @Builder.Default
-    private String verificationStatus = "pending"; // pending, approved, rejected, expired
+    private String verificationStatus = "PENDING";
 
     @Column(name = "verification_notes", columnDefinition = "TEXT")
     private String verificationNotes;
@@ -86,7 +88,7 @@ public class KycDocument {
      * Approve this KYC document
      */
     public void approve(UUID verifierId, String verificationNotes) {
-        this.verificationStatus = "approved";
+        this.verificationStatus = "APPROVED";
         this.verifiedBy = verifierId;
         this.verifiedAt = OffsetDateTime.now();
         this.verificationNotes = verificationNotes;
@@ -96,7 +98,7 @@ public class KycDocument {
      * Reject this KYC document
      */
     public void reject(UUID verifierId, String verificationNotes) {
-        this.verificationStatus = "rejected";
+        this.verificationStatus = "REJECTED";
         this.verifiedBy = verifierId;
         this.verifiedAt = OffsetDateTime.now();
         this.verificationNotes = verificationNotes;
@@ -113,13 +115,13 @@ public class KycDocument {
      * Check if document is pending verification
      */
     public boolean isPending() {
-        return "pending".equals(verificationStatus);
+        return "PENDING".equals(verificationStatus);
     }
 
     /**
      * Check if document is approved
      */
     public boolean isApproved() {
-        return "approved".equals(verificationStatus);
+        return "APPROVED".equals(verificationStatus);
     }
 }

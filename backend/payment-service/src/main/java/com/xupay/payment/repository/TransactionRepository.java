@@ -9,7 +9,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -43,14 +42,17 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     /**
      * Count transactions from user after specific time.
      * Used for velocity fraud checks (e.g., max 10 txns/hour).
-     * 
+     *
+     * NOTE: startTime is LocalDateTime to match Transaction.createdAt —
+     * binding an Instant here throws QueryArgumentException at runtime.
+     *
      * @param userId User ID (sender)
      * @param startTime Start time for counting (e.g., 1 hour ago)
      * @return Count of transactions from user since startTime
      */
     @Query("SELECT COUNT(t) FROM Transaction t WHERE t.fromUserId = :userId AND t.createdAt > :startTime")
     long countByFromUserIdAndCreatedAtAfter(
-        @Param("userId") UUID userId, 
-        @Param("startTime") Instant startTime
+        @Param("userId") UUID userId,
+        @Param("startTime") LocalDateTime startTime
     );
 }

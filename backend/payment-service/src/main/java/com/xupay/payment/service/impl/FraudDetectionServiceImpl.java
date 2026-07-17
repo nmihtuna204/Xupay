@@ -15,8 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.time.Duration;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -157,7 +156,7 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
         if (triggered) {
             long actualCount = transactionRepository.countByFromUserIdAndCreatedAtAfter(
                 userId, 
-                Instant.now().minus(Duration.ofMinutes(timeWindowMinutes))
+                LocalDateTime.now().minusMinutes(timeWindowMinutes)
             );
             details.put(rule.getRuleName(), 
                 String.format("Transaction frequency exceeded: %d transactions in %d minutes (max: %d)", 
@@ -228,7 +227,7 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
 
     @Override
     public boolean checkVelocityRule(UUID userId, int timeWindowMinutes, int threshold) {
-        Instant startTime = Instant.now().minus(Duration.ofMinutes(timeWindowMinutes));
+        LocalDateTime startTime = LocalDateTime.now().minusMinutes(timeWindowMinutes);
         long count = transactionRepository.countByFromUserIdAndCreatedAtAfter(userId, startTime);
         
         log.debug("Velocity check: userId={}, window={}min, count={}, threshold={}", 

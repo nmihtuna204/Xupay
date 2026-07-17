@@ -157,7 +157,13 @@ public class UserServiceClient {
     public CompletableFuture<RecordTransactionResponse> recordTransactionAsync(
             UUID userId, Long amountCents, String transactionType, UUID transactionId) {
 
+        // Capture the caller's JWT on the request thread; the async worker
+        // thread has no request context, so re-seed the holder there for the
+        // gRPC client interceptor to forward.
+        final String callerToken = JwtContextHolder.get();
+
         return CompletableFuture.supplyAsync(() -> {
+            JwtContextHolder.set(callerToken);
             try {
                 log.debug("Recording transaction {} for user {} (async)", transactionId, userId);
 
@@ -180,6 +186,8 @@ public class UserServiceClient {
                         .setSuccess(false)
                         .setMessage("Recording failed: " + e.getStatus().getDescription())
                         .build();
+            } finally {
+                JwtContextHolder.clear();
             }
         });
     }

@@ -143,11 +143,16 @@ cd backend/payment-service && ./mvnw test     # 38 tests
 
 # Frontend
 cd frontend/xupay-frontend
-npm test                                       # 457 tests (Vitest)
+npm test                                       # 459 tests (Vitest)
 npm run build                                  # production build
+
+# End-to-end smoke test against the running Docker stack
+node scripts/e2e-smoke.mjs
+# register ×2 → KYC approve → wallets → deposit → P2P transfer
+# → idempotent retry → withdraw → ledger balance assertions
 ```
 
-CI runs all of the above on every push (see `.github/workflows/ci.yml`).
+CI runs unit tests and builds on every push (see `.github/workflows/ci.yml`).
 
 ---
 

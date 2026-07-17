@@ -16,7 +16,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -88,8 +88,8 @@ class FraudDetectionServiceTest {
         
         // Simulate 11 transactions in last hour (triggers rule)
         when(transactionRepository.countByFromUserIdAndCreatedAtAfter(
-            eq(testUserId), 
-            any(Instant.class)
+            eq(testUserId),
+            any(LocalDateTime.class)
         )).thenReturn(11L);
 
         // When

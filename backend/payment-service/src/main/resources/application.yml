@@ -3,14 +3,16 @@ spring:
     name: payment-service
   
   datasource:
-    url: jdbc:postgresql://localhost:5433/payment_db
-    username: payment_service_user
-    password: P@ym3ntS3rv1c3P@ss2025!
+    # Defaults target local dev (docker infra on 5433); Docker overrides via
+    # SPRING_DATASOURCE_* env vars in docker-compose.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/payment_db}
+    username: ${SPRING_DATASOURCE_USERNAME:payment_service_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:P@ym3ntS3rv1c3P@ss2025!}
     driver-class-name: org.postgresql.Driver
-  
+
   jpa:
     hibernate:
-      ddl-auto: validate  # Schema exists, just validate
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:update}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -25,10 +27,10 @@ spring:
   
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: R3d1sP@ss2025!
-      timeout: 60000
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:R3d1sP@ss2025!}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:60000}
   
   jackson:
     serialization:
@@ -39,11 +41,13 @@ server:
   port: 8082
 
 # gRPC Client Configuration (for calling User Service)
+# Local default: user-service gRPC on 50053. Docker overrides via
+# GRPC_CLIENT_USER_SERVICE_ADDRESS (static://user-service:9091).
 grpc:
   client:
     user-service:
-      address: 'static://localhost:50053'
-      negotiationType: plaintext
+      address: ${GRPC_CLIENT_USER_SERVICE_ADDRESS:static://localhost:50053}
+      negotiationType: ${GRPC_CLIENT_USER_SERVICE_NEGOTIATION_TYPE:plaintext}
 
 # Actuator
 management:

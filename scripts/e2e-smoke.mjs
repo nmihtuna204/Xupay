@@ -65,7 +65,8 @@ async function registerAndVerify(label) {
   const userId = reg.data?.userId;
   assert(!!token && !!userId, `${label} got JWT + userId`);
 
-  // KYC: upload a document then approve it (MVP: any authenticated user can approve)
+  // KYC: upload a document (approval is admin-only; unverified TIER_0 users
+  // can still transact within TIER_0 limits, so approval isn't required here).
   const doc = await api(USER_URL, '/api/kyc/upload-document', {
     method: 'POST',
     token,
@@ -79,13 +80,6 @@ async function registerAndVerify(label) {
     },
   });
   assert(doc.status === 200 || doc.status === 201, `${label} KYC document uploaded (HTTP ${doc.status})`);
-
-  const approve = await api(USER_URL, `/api/kyc/${doc.data?.id}/approve`, {
-    method: 'POST',
-    token,
-    body: { verificationNotes: 'e2e auto-approval', upgradeTier: 'TIER_3' },
-  });
-  assert(approve.status === 200, `${label} KYC approved → TIER_3 (HTTP ${approve.status})`);
 
   return { email, token, userId };
 }
@@ -125,7 +119,10 @@ async function main() {
   await createWallet(alice, 'alice');
   await createWallet(bob, 'bob');
 
-  // 4. Deposit 5,000.00 ₫ (500,000 cents) to alice
+  // Amounts stay within TIER_0 limits: single txn ≤ 5,000 cents,
+  // daily send ≤ 10,000 cents (unverified starter tier).
+
+  // 4. Deposit 8,000 cents to alice (top-up is not tier-limited)
   console.log('\n— deposit');
   const depositKey = crypto.randomUUID();
   const dep = await api(PAY_URL, '/api/payments/deposit', {
@@ -134,15 +131,15 @@ async function main() {
     body: {
       idempotencyKey: depositKey,
       userId: alice.userId,
-      amountCents: 500000,
+      amountCents: 8000,
       description: 'e2e top-up',
     },
   });
   assert(dep.status === 201, `deposit completed (HTTP ${dep.status})`, JSON.stringify(dep.data));
   assert(dep.data?.status === 'COMPLETED', 'deposit status COMPLETED');
-  assert((await balanceOf(alice)) === 500000, 'alice balance = 500,000 after deposit');
+  assert((await balanceOf(alice)) === 8000, 'alice balance = 8,000 after deposit');
 
-  // 5. Transfer 100,000 cents alice → bob
+  // 5. Transfer 3,000 cents alice → bob (within TIER_0 limits)
   console.log('\n— transfer');
   const transferKey = crypto.randomUUID();
   const t1 = await api(PAY_URL, '/api/payments/transfer', {
@@ -152,7 +149,7 @@ async function main() {
       idempotencyKey: transferKey,
       fromUserId: alice.userId,
       toUserId: bob.userId,
-      amountCents: 100000,
+      amountCents: 3000,
       description: 'e2e transfer',
     },
   });
@@ -167,7 +164,7 @@ async function main() {
       idempotencyKey: transferKey,
       fromUserId: alice.userId,
       toUserId: bob.userId,
-      amountCents: 100000,
+      amountCents: 3000,
       description: 'e2e transfer (retry)',
     },
   });
@@ -175,10 +172,10 @@ async function main() {
     t2.data?.transactionId === t1.data?.transactionId,
     'idempotent retry returned the SAME transaction'
   );
-  assert((await balanceOf(alice)) === 400000, 'alice balance = 400,000 (no double spend)');
-  assert((await balanceOf(bob)) === 100000, 'bob balance = 100,000');
+  assert((await balanceOf(alice)) === 5000, 'alice balance = 5,000 (no double spend)');
+  assert((await balanceOf(bob)) === 3000, 'bob balance = 3,000');
 
-  // 7. Withdraw 50,000 cents from bob
+  // 7. Withdraw 1,000 cents from bob
   console.log('\n— withdraw');
   const wd = await api(PAY_URL, '/api/payments/withdraw', {
     method: 'POST',
@@ -186,12 +183,12 @@ async function main() {
     body: {
       idempotencyKey: crypto.randomUUID(),
       userId: bob.userId,
-      amountCents: 50000,
+      amountCents: 1000,
       description: 'e2e cash out',
     },
   });
   assert(wd.status === 201, `withdraw completed (HTTP ${wd.status})`, JSON.stringify(wd.data));
-  assert((await balanceOf(bob)) === 50000, 'bob balance = 50,000 after withdraw');
+  assert((await balanceOf(bob)) === 2000, 'bob balance = 2,000 after withdraw');
 
   // 8. Insufficient balance is rejected
   const overdraft = await api(PAY_URL, '/api/payments/withdraw', {
@@ -219,7 +216,7 @@ async function main() {
   const debits = entries.filter((e) => e.entryType === 'DEBIT').reduce((s, e) => s + e.amountCents, 0);
   const credits = entries.filter((e) => e.entryType === 'CREDIT').reduce((s, e) => s + e.amountCents, 0);
   assert(entries.length === 2, `transfer has 2 ledger entries (${entries.length})`);
-  assert(debits === credits && debits === 100000, `ledger balanced: debits=${debits} credits=${credits}`);
+  assert(debits === credits && debits === 3000, `ledger balanced: debits=${debits} credits=${credits}`);
 
   // Summary
   console.log(`\n========================================`);

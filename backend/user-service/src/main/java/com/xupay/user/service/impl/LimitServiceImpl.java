@@ -42,7 +42,7 @@ public class LimitServiceImpl implements LimitService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         // Get limits for user's tier
-        String tierName = user.getKycTier().name().toLowerCase();
+        String tierName = user.getKycTier().name();
         TransactionLimit limits = transactionLimitRepository.findByTierName(tierName)
                 .orElseThrow(() -> new RuntimeException("Transaction limits not found for tier: " + tierName));
 
@@ -68,7 +68,7 @@ public class LimitServiceImpl implements LimitService {
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
         // Get limits for user's tier
-        String tierName = user.getKycTier().name().toLowerCase();
+        String tierName = user.getKycTier().name();
         TransactionLimit limits = transactionLimitRepository.findByTierName(tierName)
                 .orElseThrow(() -> new RuntimeException("Transaction limits not found for tier: " + tierName));
 
@@ -113,7 +113,7 @@ public class LimitServiceImpl implements LimitService {
         }
 
         // Get limits
-        String tierName = user.getKycTier().name().toLowerCase();
+        String tierName = user.getKycTier().name();
         TransactionLimit limits = transactionLimitRepository.findByTierName(tierName)
                 .orElseThrow(() -> new RuntimeException("Transaction limits not found for tier: " + tierName));
 

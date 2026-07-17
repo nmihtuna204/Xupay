@@ -307,8 +307,8 @@ public class UserGrpcServiceImpl extends UserServiceGrpc.UserServiceImplBase {
         if (user.getIsSuspended()) {
             return "User account is suspended";
         }
-        if (user.getKycStatus() != com.xupay.user.entity.enums.KycStatus.APPROVED) {
-            return "KYC verification not approved (current status: " + user.getKycStatus() + ")";
+        if (user.getKycStatus() == com.xupay.user.entity.enums.KycStatus.REJECTED) {
+            return "KYC verification was rejected";
         }
         return "User cannot transact";
     }
