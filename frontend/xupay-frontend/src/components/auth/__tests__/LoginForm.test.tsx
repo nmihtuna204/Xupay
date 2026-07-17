@@ -59,7 +59,7 @@ describe('LoginForm', () => {
 
     expect(screen.getByTestId('email-input')).toBeInTheDocument()
     expect(screen.getByTestId('password-input')).toBeInTheDocument()
-    expect(screen.getByTestId('submit-button')).toBeInTheDocument()
+    expect(screen.getByTestId('login-submit')).toBeInTheDocument()
   })
 
   it('should successfully login with valid credentials', () => {
@@ -72,17 +72,23 @@ describe('LoginForm', () => {
     // Fill in form
     const emailInput = screen.getByTestId('email-input') as HTMLInputElement
     const passwordInput = screen.getByTestId('password-input') as HTMLInputElement
-    const submitButton = screen.getByTestId('submit-button')
+    const submitButton = screen.getByTestId('login-submit')
 
     fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
     fireEvent.change(passwordInput, { target: { value: 'password123' } })
     fireEvent.click(submitButton)
 
-    // Verify mutation was called
-    expect(mockUseLogin.mutate).toHaveBeenCalledWith({
-      email: 'test@example.com',
-      password: 'password123',
-    })
+    // Verify mutation was called with the payload + success/error callbacks
+    expect(mockUseLogin.mutate).toHaveBeenCalledWith(
+      {
+        email: 'test@example.com',
+        password: 'password123',
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
+      })
+    )
   })
 
   it('should disable inputs while loading', () => {
@@ -93,21 +99,35 @@ describe('LoginForm', () => {
 
     const emailInput = screen.getByTestId('email-input') as HTMLInputElement
     const passwordInput = screen.getByTestId('password-input') as HTMLInputElement
-    const submitButton = screen.getByTestId('submit-button') as HTMLButtonElement
+    const submitButton = screen.getByTestId('login-submit') as HTMLButtonElement
 
     expect(submitButton.disabled).toBe(true)
     expect(emailInput.disabled).toBe(true)
     expect(passwordInput.disabled).toBe(true)
   })
 
+  function fillAndSubmit() {
+    fireEvent.change(screen.getByTestId('email-input'), {
+      target: { value: 'test@example.com' },
+    })
+    fireEvent.change(screen.getByTestId('password-input'), {
+      target: { value: 'password123' },
+    })
+    fireEvent.click(screen.getByTestId('login-submit'))
+  }
+
   it('should call onSuccess callback when login succeeds', async () => {
     const onSuccess = vi.fn()
 
-    mockUseLogin.isSuccess = true
-    mockUseLogin.data = { user: { id: '123', email: 'test@example.com' } }
+    // The form passes onSuccess/onError callbacks to mutate() — simulate a
+    // successful mutation by invoking the provided onSuccess callback.
+    mockUseLogin.mutate.mockImplementation((_payload: unknown, opts: any) => {
+      opts?.onSuccess?.({ user: { id: '123', email: 'test@example.com' } })
+    })
     vi.mocked(useLogin).mockReturnValue(mockUseLogin)
 
     renderWithClient(<LoginForm onSuccess={onSuccess} />)
+    fillAndSubmit()
 
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith({ id: '123', email: 'test@example.com' })
@@ -115,14 +135,17 @@ describe('LoginForm', () => {
   })
 
   it('should redirect to specified URL after successful login', async () => {
-    mockUseLogin.isSuccess = true
-    mockUseLogin.data = { user: { id: '123', email: 'test@example.com' } }
+    mockUseLogin.mutate.mockImplementation((_payload: unknown, opts: any) => {
+      opts?.onSuccess?.({ user: { id: '123', email: 'test@example.com' } })
+    })
     vi.mocked(useLogin).mockReturnValue(mockUseLogin)
 
     renderWithClient(<LoginForm redirectTo="/custom-path" />)
+    fillAndSubmit()
 
+    // Redirect happens after a 100ms delay inside the component
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith('/custom-path')
-    }, { timeout: 500 })
+    }, { timeout: 1000 })
   })
 })

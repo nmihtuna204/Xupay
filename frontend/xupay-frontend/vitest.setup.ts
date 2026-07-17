@@ -30,15 +30,14 @@ vi.mock('next/headers', () => ({
   })),
 }))
 
-// Mock next/image
-vi.mock('next/image', () => ({
-  default: ({ src, alt, ...props }: any) => ({
-    __isNext: true,
-    src,
-    alt,
-    props,
-  }),
-}))
+// Mock next/image — must return a real React element, not a plain object
+vi.mock('next/image', async () => {
+  const React = await import('react')
+  return {
+    default: ({ src, alt, width, height, className }: any) =>
+      React.createElement('img', { src, alt, width, height, className }),
+  }
+})
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {

@@ -30,7 +30,9 @@ describe('Container', () => {
       const wrapper = container.firstChild as HTMLElement
       expect(wrapper).toHaveClass('max-w-7xl')
       expect(wrapper).toHaveClass('mx-auto')
-      expect(wrapper).toHaveClass('px-4')
+      // Default padding is 'md' => px-6 py-8 per spec
+      expect(wrapper).toHaveClass('px-6')
+      expect(wrapper).toHaveClass('py-8')
     })
   })
 
@@ -119,19 +121,27 @@ describe('Container', () => {
     })
   })
 
-  describe('responsive padding', () => {
-    it('includes responsive padding classes', () => {
-      const { container } = render(
-        <Container>
-          <div>Content</div>
-        </Container>
-      )
+  describe('padding prop', () => {
+    it('applies each padding token from the spec scale', () => {
+      const cases: Array<{ padding: 'none' | 'sm' | 'md' | 'lg'; expected: string[] }> = [
+        { padding: 'none', expected: ['p-0'] },
+        { padding: 'sm', expected: ['px-4', 'py-4'] },
+        { padding: 'md', expected: ['px-6', 'py-8'] },
+        { padding: 'lg', expected: ['px-8', 'py-12'] },
+      ]
 
-      const wrapper = container.firstChild as HTMLElement
-      // Check for responsive padding classes
-      expect(wrapper.className).toContain('px-4')
-      expect(wrapper.className).toContain('sm:px-6')
-      expect(wrapper.className).toContain('lg:px-8')
+      for (const { padding, expected } of cases) {
+        const { container, unmount } = render(
+          <Container padding={padding}>
+            <div>Content</div>
+          </Container>
+        )
+        const wrapper = container.firstChild as HTMLElement
+        for (const cls of expected) {
+          expect(wrapper).toHaveClass(cls)
+        }
+        unmount()
+      }
     })
   })
 

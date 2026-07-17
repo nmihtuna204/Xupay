@@ -1,79 +1,52 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import { Topbar } from "./Topbar";
+import { renderWithProviders } from "@/test/test-utils";
 import React from "react";
 
+// Topbar renders UserMenu (useAuth) and ThemeToggle, so it needs providers.
+
 describe("Topbar", () => {
-  it("renders topbar container", () => {
-    const { container } = render(<Topbar />);
-    const topbar = container.querySelector("div[class*='fixed']");
-    expect(topbar).toBeInTheDocument();
+  it("renders a header element", () => {
+    const { container } = renderWithProviders(<Topbar />);
+    expect(container.querySelector("header")).toBeInTheDocument();
   });
 
-  it("renders menu button on mobile", () => {
-    render(<Topbar showMenu={false} />);
-    const menuButton = screen.getByLabelText("Toggle menu");
-    expect(menuButton).toBeInTheDocument();
+  it("shows the page title for the active route (Dashboard fallback)", () => {
+    renderWithProviders(<Topbar />);
+    // usePathname is mocked to '/' so the fallback title renders
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
   });
 
-  it("shows X icon when menu is open", () => {
-    const { container } = render(<Topbar showMenu={true} />);
-    const xIcon = container.querySelector("svg");
-    expect(xIcon).toBeInTheDocument();
+  it("renders the mobile menu button", () => {
+    renderWithProviders(<Topbar />);
+    expect(screen.getByLabelText("Toggle menu")).toBeInTheDocument();
   });
 
   it("calls onMenuClick when menu button is clicked", async () => {
     const handleClick = vi.fn();
-    render(<Topbar onMenuClick={handleClick} />);
-    const menuButton = screen.getByLabelText("Toggle menu");
-    await userEvent.click(menuButton);
-    expect(handleClick).toHaveBeenCalled();
+    renderWithProviders(<Topbar onMenuClick={handleClick} />);
+    await userEvent.click(screen.getByLabelText("Toggle menu"));
+    expect(handleClick).toHaveBeenCalledTimes(1);
   });
 
-  it("renders breadcrumbs when provided", () => {
-    const breadcrumbs = [
-      { label: "Dashboard", href: "/app/dashboard" },
-      { label: "Wallets" },
-    ];
-    render(<Topbar breadcrumbs={breadcrumbs} />);
-    expect(screen.getByText("Dashboard")).toBeInTheDocument();
-    expect(screen.getByText("Wallets")).toBeInTheDocument();
+  it("renders the global search input", () => {
+    renderWithProviders(<Topbar />);
+    expect(
+      screen.getByPlaceholderText("Search transactions, wallets...")
+    ).toBeInTheDocument();
   });
 
-  it("renders notification bell icon", () => {
-    const { container } = render(<Topbar />);
-    const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBeGreaterThan(0);
+  it("renders notification, new and command palette actions", () => {
+    renderWithProviders(<Topbar />);
+    expect(screen.getByLabelText("Notifications")).toBeInTheDocument();
+    expect(screen.getByLabelText("New")).toBeInTheDocument();
+    expect(screen.getByLabelText("Command Palette")).toBeInTheDocument();
   });
 
-  it("renders user menu icon", () => {
-    const { container } = render(<Topbar />);
-    const buttons = container.querySelectorAll("button");
-    expect(buttons.length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("has fixed positioning", () => {
-    const { container } = render(<Topbar />);
-    const topbar = container.querySelector("div[class*='fixed']");
-    expect(topbar).toHaveClass("fixed", "top-0", "z-50");
-  });
-
-  it("has correct height", () => {
-    const { container } = render(<Topbar />);
-    const topbar = container.querySelector("div[class*='h-full']")?.parentElement;
-    expect(topbar).toHaveStyle({ height: "3.5rem" });
-  });
-
-  it("renders with dark mode support", () => {
-    const { container } = render(<Topbar />);
-    const topbar = container.querySelector("div[class*='dark']");
-    expect(topbar).toHaveClass("dark:bg-gray-900", "dark:border-gray-800");
-  });
-
-  it("supports ref forwarding", () => {
-    const ref = React.createRef<HTMLDivElement>();
-    render(<Topbar ref={ref} />);
-    expect(ref.current).toBeInstanceOf(HTMLDivElement);
+  it("merges a custom className on the header", () => {
+    const { container } = renderWithProviders(<Topbar className="custom-topbar" />);
+    expect(container.querySelector("header")).toHaveClass("custom-topbar");
   });
 });

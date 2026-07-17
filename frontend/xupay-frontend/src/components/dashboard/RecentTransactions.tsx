@@ -25,15 +25,21 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ userId, limit = 5, onTransactionClick, transactions: propTransactions }: RecentTransactionsProps) {
-  // If transactions are passed as prop, use them directly (for dashboard page)
+  // If transactions are passed as prop, use them directly (for dashboard page).
+  // The hook must be called unconditionally (Rules of Hooks) — we disable the
+  // query instead when prop data is provided.
   const shouldFetchTransactions = !propTransactions
-  
-  const { data, isLoading, isError } = shouldFetchTransactions 
-    ? useTransactions({ userId, page: 1, size: limit }) as any
-    : { data: null, isLoading: false, isError: false }
+
+  const query = useTransactions(
+    { userId, page: 1, size: limit },
+    { enabled: shouldFetchTransactions }
+  )
+  const data = shouldFetchTransactions ? query.data : null
+  const isLoading = shouldFetchTransactions && query.isLoading
+  const isError = shouldFetchTransactions && query.isError
 
   // Use prop transactions if available, otherwise use fetched data
-  const transactionItems = propTransactions || data?.items || []
+  const transactionItems = propTransactions || (data as { items?: Transaction[] } | null | undefined)?.items || []
 
   if (isLoading) {
     return (
@@ -96,7 +102,14 @@ export function RecentTransactions({ userId, limit = 5, onTransactionClick, tran
           const txAmount = typeof rawAmount === 'string'
             ? parseFloat(rawAmount.replace(/[^0-9.-]+/g, ''))
             : (typeof rawAmount === 'number' ? rawAmount : ((tx.amountCents ?? 0) / 100))
-          const txType = tx.type
+          // Normalize backend types (TOPUP/WITHDRAW/TRANSFER) into a display
+          // direction relative to the current user; keep mock types as-is.
+          let txType = tx.type
+          if (txType === 'TOPUP') txType = 'deposit'
+          else if (txType === 'WITHDRAW') txType = 'sent'
+          else if (txType === 'TRANSFER') {
+            txType = userId && tx.toUserId === userId ? 'received' : 'sent'
+          }
           
           return (
             <div 

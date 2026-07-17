@@ -1,0 +1,200 @@
+<div class="mermaid">
+
+classDiagram
+  class User {
+    +UUID id
+    +String email
+    +String phone
+    +String firstName
+    +String lastName
+    +LocalDate dateOfBirth
+    +String nationality
+    +String passwordHash
+    +KycStatus kycStatus
+    +KycTier kycTier
+    +ZonedDateTime kycVerifiedAt
+    +UUID kycVerifiedBy
+    +Boolean isActive
+    +Boolean isSuspended
+    +String suspensionReason
+    +Integer fraudScore
+    +String ipAddressRegistration
+    +String userAgentRegistration
+    +ZonedDateTime createdAt
+    +ZonedDateTime updatedAt
+    +ZonedDateTime lastLoginAt
+    +boolean canTransact()
+    +void approveKyc(KycTier, UUID)
+  }
+
+  class UserPreference {
+    +UUID id
+    +String language
+    +String timezone
+    +String currency
+    +Boolean notificationEmail
+    +Boolean notificationSms
+    +Boolean notificationPush
+    +Boolean twoFactorEnabled
+    +String twoFactorMethod
+    +Boolean biometricEnabled
+    +Boolean autoTopupEnabled
+    +Long autoTopupThresholdCents
+    +Long autoTopupAmountCents
+    +String theme
+  }
+
+  class UserContact {
+    +UUID id
+    +String nickname
+    +Integer totalTransactions
+    +OffsetDateTime lastTransactionAt
+    +Boolean isFavorite
+    +void recordTransaction()
+    +void toggleFavorite()
+  }
+
+  class KycDocument {
+    +UUID id
+    +DocumentType documentType
+    +String documentNumber
+    +String documentCountry
+    +String fileUrl
+    +Long fileSizeBytes
+    +String mimeType
+    +String verificationStatus
+    +String verificationNotes
+    +UUID verifiedBy
+    +OffsetDateTime verifiedAt
+    +OffsetDateTime expiresAt
+    +String extractedData
+    +void approve(UUID,String)
+    +void reject(UUID,String)
+  }
+
+  class DailyUsage {
+    +UUID id
+    +LocalDate usageDate
+    +Long totalSentCents
+    +Integer totalSentCount
+    +Long totalReceivedCents
+    +Integer totalReceivedCount
+    +String hourlySentCounts
+    +void incrementSent(Long)
+    +void incrementReceived(Long)
+  }
+
+  class TransactionLimit {
+    +UUID id
+    +String tierName
+    +Long dailySendLimitCents
+    +Long dailyReceiveLimitCents
+    +Long singleTransactionMaxCents
+    +Long monthlyVolumeLimitCents
+    +Integer maxTransactionsPerDay
+    +Integer maxTransactionsPerHour
+    +Boolean canSendInternational
+    +Boolean canReceiveMerchantPayments
+  }
+
+  class Wallet {
+    +UUID id
+    +UUID userId
+    +String glAccountCode
+    +WalletType walletType
+    +String currency
+    +Boolean isActive
+    +Boolean isFrozen
+    +String freezeReason
+  }
+
+  class Transaction {
+    +UUID id
+    +UUID idempotencyKey
+    +UUID fromWalletId
+    +UUID toWalletId
+    +UUID fromUserId
+    +UUID toUserId
+    +Long amountCents
+    +String currency
+    +TransactionType type
+    +TransactionStatus status
+    +String description
+    +String referenceNumber
+    +Boolean isFlagged
+    +Integer fraudScore
+    +String fraudReason
+    +LocalDateTime createdAt
+    +LocalDateTime completedAt
+  }
+
+  class LedgerEntry {
+    +UUID id
+    +UUID transactionId
+    +String glAccountCode
+    +UUID walletId
+    +EntryType entryType
+    +Long amountCents
+    +String description
+    +Boolean isReversed
+    +LocalDateTime createdAt
+  }
+
+  class ChartOfAccounts {
+    +UUID id
+    +String accountCode
+    +String accountName
+    +AccountType accountType
+    +NormalBalance normalBalance
+    +String parentAccountCode
+    +Boolean isActive
+  }
+
+  class Merchant {
+    +UUID id
+    +UUID userId
+    +UUID walletId
+    +String businessName
+    +String businessRegistrationNumber
+    +String businessType
+    +BigDecimal merchantFeePercentage
+    +SettlementFrequency settlementFrequency
+    +Boolean isActive
+    +Boolean isVerified
+  }
+
+  class IdempotencyCache {
+    +UUID idempotencyKey
+    +String responseData
+    +UUID transactionId
+    +LocalDateTime expiresAt
+  }
+
+  class FraudRule {
+    +UUID id
+    +String ruleName
+    +RuleType ruleType
+    +String parameters
+    +Integer riskScorePenalty
+    +FraudAction action
+    +Boolean isActive
+  }
+
+  %% Associations
+  User "1" -- "1" UserPreference : has
+  User "1" o-- "*" UserContact : owns
+  UserContact "*" --> "1" User : contactUser
+  User "1" o-- "*" KycDocument : uploads
+  User "1" o-- "*" DailyUsage : dailyRecords
+
+  Wallet "1" -- "0..*" Transaction : participatesIn
+  Transaction "1" -- "0..*" LedgerEntry : creates
+  LedgerEntry "*" -- "1" ChartOfAccounts : postsTo
+  Wallet "1" o-- "1" ChartOfAccounts : mapsTo
+  Merchant "1" -- "1" Wallet : uses
+  Merchant "1" .. "1" User : owner
+  IdempotencyCache "1" -- "0..1" Transaction : mayReference
+  FraudRule "0..*" .. "0..*" Transaction : appliedTo
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>

@@ -52,6 +52,20 @@ export interface TransferResponse {
   createdAt?: string;
 }
 
+export interface DepositRequest {
+  idempotencyKey?: string;
+  userId: string; // UUID
+  amountCents: number;
+  description?: string;
+}
+
+export interface WithdrawRequest {
+  idempotencyKey?: string;
+  userId: string; // UUID
+  amountCents: number;
+  description?: string;
+}
+
 export interface TransactionDetailResponse {
   transactionId: string;
   type: string;
@@ -195,6 +209,22 @@ export class PaymentServiceClient implements IPaymentServiceClient {
     return resp.data;
   }
 
+  async deposit(request: DepositRequest): Promise<TransferResponse> {
+    const headers: Record<string,string> = {};
+    if (request.idempotencyKey) headers['X-Idempotency-Key'] = request.idempotencyKey;
+
+    const resp = await this.client.post<TransferResponse>('/api/payments/deposit', request, { headers });
+    return resp.data;
+  }
+
+  async withdraw(request: WithdrawRequest): Promise<TransferResponse> {
+    const headers: Record<string,string> = {};
+    if (request.idempotencyKey) headers['X-Idempotency-Key'] = request.idempotencyKey;
+
+    const resp = await this.client.post<TransferResponse>('/api/payments/withdraw', request, { headers });
+    return resp.data;
+  }
+
   async getTransaction(transactionId: string): Promise<TransactionDetailResponse> {
     const resp = await this.client.get<TransactionDetailResponse>(`/api/payments/${transactionId}`);
     return resp.data;
@@ -243,6 +273,8 @@ export class PaymentServiceClient implements IPaymentServiceClient {
 
 export interface IPaymentServiceClient {
   transfer(request: TransferRequest): Promise<TransferResponse>;
+  deposit(request: DepositRequest): Promise<TransferResponse>;
+  withdraw(request: WithdrawRequest): Promise<TransferResponse>;
   getTransaction(transactionId: string): Promise<TransactionDetailResponse>;
   getByIdempotencyKey(idempotencyKey: string): Promise<TransferResponse | null>;
   listTransactions(params?: { userId?: string; page?: number; size?: number }): Promise<{ items: TransactionDetailResponse[]; total?: number }>;

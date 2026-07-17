@@ -53,13 +53,17 @@ export function useTransactionByIdempotencyKey(idempotencyKey: string) {
 /**
  * List transactions with filters
  */
-export function useTransactions(params?: { userId?: string; page?: number; size?: number }) {
+export function useTransactions(
+  params?: { userId?: string; page?: number; size?: number },
+  options?: { enabled?: boolean }
+) {
   const client = getPaymentServiceClient();
 
   return useQuery({
     queryKey: transactionsKeys.list(params || {}),
     queryFn: () => client.listTransactions(params),
     staleTime: 30 * 1000, // 30 seconds
+    enabled: options?.enabled ?? true,
   });
 }
 
@@ -86,6 +90,54 @@ export function useTransfer() {
       
       // Set the new transaction in cache
       queryClient.setQueryData(transactionsKeys.detail(data.transactionId), data);
+    },
+  });
+}
+
+/**
+ * Deposit (top-up) into the user's wallet.
+ * Generates an idempotency key automatically when the caller doesn't supply one.
+ */
+export function useDeposit() {
+  const queryClient = useQueryClient();
+  const client = getPaymentServiceClient();
+
+  return useMutation({
+    mutationFn: (request: { userId: string; amountCents: number; description?: string; idempotencyKey?: string }) =>
+      client.deposit({
+        idempotencyKey: request.idempotencyKey ?? crypto.randomUUID(),
+        userId: request.userId,
+        amountCents: request.amountCents,
+        description: request.description,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: transactionsKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: walletsKeys.userWallet(variables.userId) });
+      queryClient.invalidateQueries({ queryKey: walletsKeys.all });
+    },
+  });
+}
+
+/**
+ * Withdraw from the user's wallet to an external destination.
+ * Generates an idempotency key automatically when the caller doesn't supply one.
+ */
+export function useWithdraw() {
+  const queryClient = useQueryClient();
+  const client = getPaymentServiceClient();
+
+  return useMutation({
+    mutationFn: (request: { userId: string; amountCents: number; description?: string; idempotencyKey?: string }) =>
+      client.withdraw({
+        idempotencyKey: request.idempotencyKey ?? crypto.randomUUID(),
+        userId: request.userId,
+        amountCents: request.amountCents,
+        description: request.description,
+      }),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: transactionsKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: walletsKeys.userWallet(variables.userId) });
+      queryClient.invalidateQueries({ queryKey: walletsKeys.all });
     },
   });
 }

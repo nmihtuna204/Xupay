@@ -30,3 +30,10 @@ logs/
 # OS specific
 .DS_Store
 Thumbs.db
+
+# Tooling
+.qodo/
+
+# Next.js
+frontend/xupay-frontend/.next/
+frontend/xupay-frontend/next-env.d.ts

@@ -9,6 +9,33 @@ import { render, screen } from '@testing-library/react'
 import React from 'react'
 import DashboardPage from '../page'
 
+// Mock the aggregated hooks module used by the page
+vi.mock('@/hooks/api', () => ({
+  useDashboardOverview: vi.fn(() => ({
+    data: {
+      kpis: [
+        { id: '1', title: 'Total Balance', value: '$32,126.00', change: '+15%', trend: 'up', color: 'text-emerald-400' },
+        { id: '2', title: 'Total Spending', value: '$1,200.00', change: '-5%', trend: 'down', color: 'text-red-400' },
+      ],
+      chartData: [
+        { date: '2025-12-01', balance: 1000 },
+        { date: '2025-12-02', balance: 1200 },
+      ],
+      recentTransactions: [
+        { id: 'tx-1', type: 'sent', amount: 100, status: 'completed' },
+        { id: 'tx-2', type: 'received', amount: 50, status: 'completed' },
+      ],
+    },
+    isLoading: false,
+    error: null,
+  })),
+}))
+
+// Mock the chart (recharts) to keep the test lightweight
+vi.mock('@/components/dashboard/BalanceHistoryChart', () => ({
+  BalanceHistoryChart: () => React.createElement('div', { 'data-testid': 'balance-history-chart' }),
+}))
+
 // Mock the API hooks
 vi.mock('@/hooks/api/useWallets.new', () => ({
   useWallets: vi.fn(() => ({

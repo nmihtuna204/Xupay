@@ -22,7 +22,10 @@
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
-        <grpc.version>1.59.0</grpc.version>
+        <!-- Must match the grpc-core/grpc-util version pulled in by
+             grpc-server-spring-boot-starter 3.1.0 — mixing gRPC versions
+             causes NoSuchFieldError at runtime -->
+        <grpc.version>1.63.0</grpc.version>
         <protobuf.version>3.25.1</protobuf.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
         <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>

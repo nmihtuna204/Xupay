@@ -5,13 +5,16 @@ interface NeoCardProps {
   children: React.ReactNode
   className?: string
   onClick?: () => void
+  /** Extra DOM attributes (e.g. data-testid) forwarded to the card element */
+  [key: `data-${string}`]: string | undefined
 }
 
-export function NeoCard({ children, className = '', onClick }: NeoCardProps) {
+export function NeoCard({ children, className = '', onClick, ...rest }: NeoCardProps) {
   return (
     <motion.div
       whileHover={{ y: -2, transition: { duration: 0.2 } }}
       onClick={onClick}
+      {...rest}
       className={`
         relative overflow-hidden rounded-2xl
         bg-[#121212]/60 backdrop-blur-md

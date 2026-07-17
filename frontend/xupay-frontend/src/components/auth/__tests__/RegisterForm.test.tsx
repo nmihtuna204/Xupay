@@ -80,13 +80,17 @@ describe('RegisterForm', () => {
     // Submit form
     fireEvent.click(screen.getByTestId('submit-button'))
 
-    // Verify mutation was called
+    // Verify mutation was called with the payload + success/error callbacks
     expect(mockUseRegister.mutate).toHaveBeenCalledWith(
       expect.objectContaining({
         email: 'newuser@example.com',
         firstName: 'John',
         lastName: 'Doe',
         password: 'SecurePass123!',
+      }),
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+        onError: expect.any(Function),
       })
     )
   })
@@ -120,14 +124,28 @@ describe('RegisterForm', () => {
     expect(submitButton.textContent).toContain('Creating account...')
   })
 
+  function fillAndSubmitValidForm() {
+    fireEvent.change(screen.getByTestId('email-input'), { target: { value: 'test@example.com' } })
+    fireEvent.change(screen.getByTestId('firstName-input'), { target: { value: 'John' } })
+    fireEvent.change(screen.getByTestId('lastName-input'), { target: { value: 'Doe' } })
+    fireEvent.change(screen.getByTestId('password-input'), { target: { value: 'SecurePass123!' } })
+    fireEvent.change(screen.getByTestId('confirmPassword-input'), { target: { value: 'SecurePass123!' } })
+    fireEvent.click(screen.getByTestId('terms-checkbox'))
+    fireEvent.click(screen.getByTestId('submit-button'))
+  }
+
   it('should call onSuccess callback when registration succeeds', async () => {
     const onSuccess = vi.fn()
 
-    mockUseRegister.isSuccess = true
-    mockUseRegister.data = { user: { id: '123', email: 'test@example.com' } }
+    // The form passes onSuccess/onError callbacks to mutate() — simulate a
+    // successful mutation by invoking the provided onSuccess callback.
+    mockUseRegister.mutate.mockImplementation((_payload: unknown, opts: any) => {
+      opts?.onSuccess?.({ user: { id: '123', email: 'test@example.com' } })
+    })
     vi.mocked(useRegister).mockReturnValue(mockUseRegister)
 
     renderWithClient(<RegisterForm onSuccess={onSuccess} />)
+    fillAndSubmitValidForm()
 
     await waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith({ id: '123', email: 'test@example.com' })
@@ -135,15 +153,18 @@ describe('RegisterForm', () => {
   })
 
   it('should redirect after successful registration', async () => {
-    mockUseRegister.isSuccess = true
-    mockUseRegister.data = { user: { id: '123', email: 'test@example.com' } }
+    mockUseRegister.mutate.mockImplementation((_payload: unknown, opts: any) => {
+      opts?.onSuccess?.({ user: { id: '123', email: 'test@example.com' } })
+    })
     vi.mocked(useRegister).mockReturnValue(mockUseRegister)
 
     renderWithClient(<RegisterForm redirectTo="/onboarding" />)
+    fillAndSubmitValidForm()
 
+    // Redirect happens after a 100ms delay inside the component
     await waitFor(() => {
       expect(mockRouter.push).toHaveBeenCalledWith('/onboarding')
-    }, { timeout: 500 })
+    }, { timeout: 1000 })
   })
 
   it('should allow optional phone field', () => {

@@ -73,12 +73,13 @@ describe('BalanceCard', () => {
     expect(screen.getByText('Failed to load balance')).toBeInTheDocument()
   })
 
-  it('should display wallet type and status', async () => {
+  it('should display wallet status when balance is loaded', async () => {
+    // Note: the card intentionally shows only status; wallet type is not part
+    // of WalletBalanceResponse anymore.
     mockUseWalletBalance.mockReturnValue({
       data: {
         walletId: 'wallet-123',
         balanceCents: 100000,
-        walletType: 'MERCHANT',
         isFrozen: false,
       },
       isLoading: false,
@@ -89,7 +90,6 @@ describe('BalanceCard', () => {
     renderWithClient(<BalanceCard walletId="wallet-123" />)
 
     await waitFor(() => {
-      expect(screen.getByText('MERCHANT')).toBeInTheDocument()
       expect(screen.getByText('Active')).toBeInTheDocument()
     })
   })

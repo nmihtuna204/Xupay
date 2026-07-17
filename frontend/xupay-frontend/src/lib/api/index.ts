@@ -204,8 +204,10 @@ export const transactionsApi = {
     amountCents: req.amountCents,
     description: req.description,
   }),
-  deposit: async (_req: unknown): Promise<unknown> => ({}),
-  withdraw: async (_req: unknown): Promise<unknown> => ({}),
+  deposit: (req: { idempotencyKey?: string; userId: string; amountCents: number; description?: string }) =>
+    getPaymentServiceClient().deposit(req),
+  withdraw: (req: { idempotencyKey?: string; userId: string; amountCents: number; description?: string }) =>
+    getPaymentServiceClient().withdraw(req),
 };
 
 // WALLETS API compatibility

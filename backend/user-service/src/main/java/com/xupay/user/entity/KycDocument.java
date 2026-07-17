@@ -4,7 +4,9 @@ import com.xupay.user.entity.enums.DocumentType;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -66,6 +68,7 @@ public class KycDocument {
     @Column(name = "expires_at")
     private OffsetDateTime expiresAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "extracted_data", columnDefinition = "JSONB")
     private String extractedData; // OCR/AI extracted data as JSON string
 

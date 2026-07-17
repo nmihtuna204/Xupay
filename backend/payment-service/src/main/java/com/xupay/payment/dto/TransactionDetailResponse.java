@@ -25,9 +25,13 @@ public class TransactionDetailResponse {
     private Long amountCents;
     private String currency;
     private String description;
+    private UUID fromUserId;
+    private UUID toUserId;
+    private UUID fromWalletId;
+    private UUID toWalletId;
     private LocalDateTime createdAt;
     private LocalDateTime completedAt;
-    
+
     private List<LedgerEntryDetail> ledgerEntries;
 
     @Data

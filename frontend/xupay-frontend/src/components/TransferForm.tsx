@@ -42,9 +42,9 @@ export function TransferForm({ defaultFromUserId = '', onSuccess }: TransferForm
       fromUserId,
       toUserId,
       amountCents: Number(amountCents),
+      // Backend requires an idempotency key — auto-generate when not provided
+      idempotencyKey: idempotencyKey.trim() || crypto.randomUUID(),
     }
-
-    if (idempotencyKey.trim()) payload.idempotencyKey = idempotencyKey.trim()
 
     setIsSubmitting(true)
     try {

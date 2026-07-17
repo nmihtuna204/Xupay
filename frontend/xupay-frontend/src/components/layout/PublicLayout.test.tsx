@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { describe, it, expect } from "vitest";
 import "@testing-library/jest-dom";
 import { PublicLayout } from "./PublicLayout";
@@ -13,10 +13,12 @@ describe("PublicLayout", () => {
   });
 
   it("renders header with logo", () => {
-    render(
+    const { container } = render(
       <PublicLayout><div>Content</div></PublicLayout>
     );
-    expect(screen.getByText("XuPay")).toBeInTheDocument();
+    // "XuPay" also appears in the footer brand, so scope to the header
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(header).getByText("XuPay")).toBeInTheDocument();
   });
 
   it("renders login and get started buttons", () => {
@@ -74,11 +76,13 @@ describe("PublicLayout", () => {
   });
 
   it("renders responsive navigation links", () => {
-    render(
+    const { container } = render(
       <PublicLayout><div>Content</div></PublicLayout>
     );
-    expect(screen.getByText("Features")).toBeInTheDocument();
-    expect(screen.getByText("Pricing")).toBeInTheDocument();
-    expect(screen.getByText("Docs")).toBeInTheDocument();
+    // Nav links also appear in the footer, so scope to the header nav
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(header).getByText("Features")).toBeInTheDocument();
+    expect(within(header).getByText("Pricing")).toBeInTheDocument();
+    expect(within(header).getByText("Docs")).toBeInTheDocument();
   });
 });

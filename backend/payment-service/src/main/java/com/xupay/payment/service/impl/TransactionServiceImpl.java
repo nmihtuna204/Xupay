@@ -1,9 +1,12 @@
 package com.xupay.payment.service.impl;
 
+import com.xupay.payment.dto.DepositRequest;
 import com.xupay.payment.dto.FraudEvaluationResult;
 import com.xupay.payment.dto.TransactionDetailResponse;
+import com.xupay.payment.dto.TransactionListResponse;
 import com.xupay.payment.dto.TransferRequest;
 import com.xupay.payment.dto.TransferResponse;
+import com.xupay.payment.dto.WithdrawRequest;
 import com.xupay.payment.entity.*;
 import com.xupay.payment.entity.enums.EntryType;
 import com.xupay.payment.entity.enums.TransactionStatus;
@@ -16,6 +19,8 @@ import com.xupay.payment.service.TransactionService;
 import com.xupay.user.grpc.ValidateUserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +45,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class TransactionServiceImpl implements TransactionService {
+
+    /**
+     * GL account 2110 "User Balances" (LIABILITY): money the platform owes to users.
+     * Used as the balancing side of deposits (CREDIT) and withdrawals (DEBIT).
+     */
+    private static final String USER_BALANCES_GL_ACCOUNT = "2110";
 
     private final TransactionRepository transactionRepository;
     private final WalletRepository walletRepository;
@@ -189,6 +200,181 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     @Override
+    @Transactional
+    public TransferResponse processDeposit(DepositRequest request) {
+        log.info("Processing deposit: idempotencyKey={}, user={}, amount={}",
+                request.getIdempotencyKey(), request.getUserId(), request.getAmountCents());
+
+        // Step 1: Check idempotency using Redis cache + database fallback
+        var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
+        if (cachedResponse.isPresent()) {
+            log.info("Deposit already processed (idempotent): returning cached response");
+            return cachedResponse.get();
+        }
+
+        // Step 2: Get wallet and validate state
+        Wallet wallet = walletRepository.findByUserId(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
+        validateWallet(wallet, "Wallet");
+
+        // Step 3: Create transaction record (TOPUP: no from side, external source)
+        Transaction transaction = new Transaction();
+        transaction.setIdempotencyKey(request.getIdempotencyKey());
+        transaction.setToWalletId(wallet.getId());
+        transaction.setToUserId(request.getUserId());
+        transaction.setAmountCents(request.getAmountCents());
+        transaction.setCurrency("VND");
+        transaction.setType(TransactionType.TOPUP);
+        transaction.setStatus(TransactionStatus.PROCESSING);
+        transaction.setDescription(request.getDescription());
+        transaction.setIpAddress(request.getIpAddress());
+        transaction.setUserAgent(request.getUserAgent());
+        transaction.setFraudScore(0);
+        transaction.setIsFlagged(false);
+        transaction.setIsReversed(false);
+        transaction = transactionRepository.save(transaction);
+        log.info("Deposit transaction created: id={}", transaction.getId());
+
+        // Step 4: Create balanced ledger entries
+        // DEBIT user wallet (asset account, balance increases)
+        // CREDIT "User Balances" liability (money owed to users increases)
+        try {
+            LedgerEntry walletEntry = new LedgerEntry();
+            walletEntry.setTransactionId(transaction.getId());
+            walletEntry.setGlAccountCode(wallet.getGlAccountCode());
+            walletEntry.setWalletId(wallet.getId());
+            walletEntry.setEntryType(EntryType.DEBIT);
+            walletEntry.setAmountCents(request.getAmountCents());
+            walletEntry.setDescription("Deposit to user " + request.getUserId());
+            walletEntry.setIsReversed(false);
+            ledgerEntryRepository.save(walletEntry);
+
+            LedgerEntry liabilityEntry = new LedgerEntry();
+            liabilityEntry.setTransactionId(transaction.getId());
+            liabilityEntry.setGlAccountCode(USER_BALANCES_GL_ACCOUNT);
+            liabilityEntry.setWalletId(null); // System account, no wallet
+            liabilityEntry.setEntryType(EntryType.CREDIT);
+            liabilityEntry.setAmountCents(request.getAmountCents());
+            liabilityEntry.setDescription("User balances liability for deposit " + transaction.getId());
+            liabilityEntry.setIsReversed(false);
+            ledgerEntryRepository.save(liabilityEntry);
+
+            // Step 5: Mark transaction as COMPLETED
+            transaction.setStatus(TransactionStatus.COMPLETED);
+            transaction.setCompletedAt(LocalDateTime.now());
+            transaction = transactionRepository.save(transaction);
+            log.info("Deposit completed: {}", transaction.getId());
+
+            // Step 6: Record in User Service asynchronously (daily usage tracking)
+            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "receive", transaction.getId());
+
+        } catch (Exception e) {
+            log.error("Error creating deposit ledger entries: ", e);
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            throw new RuntimeException("Deposit failed: " + e.getMessage(), e);
+        }
+
+        // Step 7: Build response and cache it for idempotency
+        TransferResponse response = buildTransferResponse(transaction);
+        idempotencyService.cache(request.getIdempotencyKey(), response);
+        return response;
+    }
+
+    @Override
+    @Transactional
+    public TransferResponse processWithdraw(WithdrawRequest request) {
+        log.info("Processing withdrawal: idempotencyKey={}, user={}, amount={}",
+                request.getIdempotencyKey(), request.getUserId(), request.getAmountCents());
+
+        // Step 1: Check idempotency using Redis cache + database fallback
+        var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
+        if (cachedResponse.isPresent()) {
+            log.info("Withdrawal already processed (idempotent): returning cached response");
+            return cachedResponse.get();
+        }
+
+        // Step 2: Get wallet and validate state
+        Wallet wallet = walletRepository.findByUserId(request.getUserId())
+                .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
+        validateWallet(wallet, "Wallet");
+
+        // Step 3: Check sufficient balance
+        Long balance = walletRepository.getBalance(wallet.getId());
+        if (balance == null) {
+            balance = 0L;
+        }
+        if (balance < request.getAmountCents()) {
+            log.warn("Insufficient balance for withdrawal: wallet={}, balance={}, required={}",
+                    wallet.getId(), balance, request.getAmountCents());
+            throw new IllegalArgumentException("Insufficient balance");
+        }
+
+        // Step 4: Create transaction record (WITHDRAW: no to side, external destination)
+        Transaction transaction = new Transaction();
+        transaction.setIdempotencyKey(request.getIdempotencyKey());
+        transaction.setFromWalletId(wallet.getId());
+        transaction.setFromUserId(request.getUserId());
+        transaction.setAmountCents(request.getAmountCents());
+        transaction.setCurrency("VND");
+        transaction.setType(TransactionType.WITHDRAW);
+        transaction.setStatus(TransactionStatus.PROCESSING);
+        transaction.setDescription(request.getDescription());
+        transaction.setIpAddress(request.getIpAddress());
+        transaction.setUserAgent(request.getUserAgent());
+        transaction.setFraudScore(0);
+        transaction.setIsFlagged(false);
+        transaction.setIsReversed(false);
+        transaction = transactionRepository.save(transaction);
+        log.info("Withdrawal transaction created: id={}", transaction.getId());
+
+        // Step 5: Create balanced ledger entries
+        // CREDIT user wallet (asset account, balance decreases)
+        // DEBIT "User Balances" liability (money owed to users decreases)
+        try {
+            LedgerEntry walletEntry = new LedgerEntry();
+            walletEntry.setTransactionId(transaction.getId());
+            walletEntry.setGlAccountCode(wallet.getGlAccountCode());
+            walletEntry.setWalletId(wallet.getId());
+            walletEntry.setEntryType(EntryType.CREDIT);
+            walletEntry.setAmountCents(request.getAmountCents());
+            walletEntry.setDescription("Withdrawal by user " + request.getUserId());
+            walletEntry.setIsReversed(false);
+            ledgerEntryRepository.save(walletEntry);
+
+            LedgerEntry liabilityEntry = new LedgerEntry();
+            liabilityEntry.setTransactionId(transaction.getId());
+            liabilityEntry.setGlAccountCode(USER_BALANCES_GL_ACCOUNT);
+            liabilityEntry.setWalletId(null); // System account, no wallet
+            liabilityEntry.setEntryType(EntryType.DEBIT);
+            liabilityEntry.setAmountCents(request.getAmountCents());
+            liabilityEntry.setDescription("User balances liability for withdrawal " + transaction.getId());
+            liabilityEntry.setIsReversed(false);
+            ledgerEntryRepository.save(liabilityEntry);
+
+            // Step 6: Mark transaction as COMPLETED
+            transaction.setStatus(TransactionStatus.COMPLETED);
+            transaction.setCompletedAt(LocalDateTime.now());
+            transaction = transactionRepository.save(transaction);
+            log.info("Withdrawal completed: {}", transaction.getId());
+
+            // Step 7: Record in User Service asynchronously (daily usage tracking)
+            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "send", transaction.getId());
+
+        } catch (Exception e) {
+            log.error("Error creating withdrawal ledger entries: ", e);
+            transaction.setStatus(TransactionStatus.FAILED);
+            transactionRepository.save(transaction);
+            throw new RuntimeException("Withdrawal failed: " + e.getMessage(), e);
+        }
+
+        // Step 8: Build response and cache it for idempotency
+        TransferResponse response = buildTransferResponse(transaction);
+        idempotencyService.cache(request.getIdempotencyKey(), response);
+        return response;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public TransactionDetailResponse getTransactionDetail(UUID transactionId) {
         log.info("Getting transaction detail: {}", transactionId);
@@ -227,10 +413,47 @@ public class TransactionServiceImpl implements TransactionService {
     @Transactional(readOnly = true)
     public TransferResponse getTransactionByIdempotencyKey(UUID idempotencyKey) {
         log.info("Getting transaction by idempotency key: {}", idempotencyKey);
-        
+
         return transactionRepository.findByIdempotencyKey(idempotencyKey)
                 .map(this::buildTransferResponse)
                 .orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TransactionListResponse listTransactions(UUID userId, int page, int size) {
+        int safePage = Math.max(0, page);
+        int safeSize = Math.min(Math.max(1, size), 100);
+        log.info("Listing transactions: userId={}, page={}, size={}", userId, safePage, safeSize);
+
+        Page<Transaction> result = (userId != null)
+                ? transactionRepository.findByFromUserIdOrToUserIdOrderByCreatedAtDesc(
+                        userId, userId, PageRequest.of(safePage, safeSize))
+                : transactionRepository.findAllByOrderByCreatedAtDesc(PageRequest.of(safePage, safeSize));
+
+        List<TransactionDetailResponse> items = result.getContent().stream()
+                .map(tx -> TransactionDetailResponse.builder()
+                        .transactionId(tx.getId())
+                        .type(tx.getType().name())
+                        .status(tx.getStatus().name())
+                        .amountCents(tx.getAmountCents())
+                        .currency(tx.getCurrency())
+                        .description(tx.getDescription())
+                        .fromUserId(tx.getFromUserId())
+                        .toUserId(tx.getToUserId())
+                        .fromWalletId(tx.getFromWalletId())
+                        .toWalletId(tx.getToWalletId())
+                        .createdAt(tx.getCreatedAt())
+                        .completedAt(tx.getCompletedAt())
+                        .build())
+                .collect(Collectors.toList());
+
+        return TransactionListResponse.builder()
+                .items(items)
+                .total(result.getTotalElements())
+                .page(safePage)
+                .size(safeSize)
+                .build();
     }
 
     /**

@@ -6,6 +6,8 @@
 import type {
   TransferRequest,
   TransferResponse,
+  DepositRequest,
+  WithdrawRequest,
   TransactionDetailResponse,
   CreateWalletRequest,
   CreateWalletResponse,
@@ -78,6 +80,104 @@ export class MockPaymentServiceClient {
       mockIdempotencyKeys.set(request.idempotencyKey, response);
     }
 
+    return response;
+  }
+
+  async deposit(request: DepositRequest): Promise<TransferResponse> {
+    await this.delay(300);
+
+    // Check idempotency
+    if (request.idempotencyKey && mockIdempotencyKeys.has(request.idempotencyKey)) {
+      return mockIdempotencyKeys.get(request.idempotencyKey)!;
+    }
+
+    const transactionId = this.generateTransactionId();
+    const response: TransferResponse = {
+      transactionId,
+      idempotencyKey: request.idempotencyKey,
+      fromUserId: '',
+      toUserId: request.userId,
+      amountCents: request.amountCents,
+      amount: request.amountCents / 100,
+      currency: 'VND',
+      status: 'COMPLETED',
+      createdAt: new Date().toISOString(),
+    };
+
+    mockTransactions.set(transactionId, {
+      transactionId,
+      type: 'TOPUP',
+      status: 'COMPLETED',
+      amountCents: request.amountCents,
+      currency: 'VND',
+      description: request.description,
+      createdAt: response.createdAt,
+    });
+
+    // Credit the user's mock wallet so balances stay consistent
+    for (const wallet of mockWallets.values()) {
+      if (wallet.userId === request.userId) {
+        wallet.balanceCents += request.amountCents;
+        wallet.balanceAmount = wallet.balanceCents / 100;
+        break;
+      }
+    }
+
+    if (request.idempotencyKey) {
+      mockIdempotencyKeys.set(request.idempotencyKey, response);
+    }
+    return response;
+  }
+
+  async withdraw(request: WithdrawRequest): Promise<TransferResponse> {
+    await this.delay(300);
+
+    // Check idempotency
+    if (request.idempotencyKey && mockIdempotencyKeys.has(request.idempotencyKey)) {
+      return mockIdempotencyKeys.get(request.idempotencyKey)!;
+    }
+
+    // Enforce sufficient balance like the real service
+    for (const wallet of mockWallets.values()) {
+      if (wallet.userId === request.userId && wallet.balanceCents < request.amountCents) {
+        throw new Error('Insufficient balance');
+      }
+    }
+
+    const transactionId = this.generateTransactionId();
+    const response: TransferResponse = {
+      transactionId,
+      idempotencyKey: request.idempotencyKey,
+      fromUserId: request.userId,
+      toUserId: '',
+      amountCents: request.amountCents,
+      amount: request.amountCents / 100,
+      currency: 'VND',
+      status: 'COMPLETED',
+      createdAt: new Date().toISOString(),
+    };
+
+    mockTransactions.set(transactionId, {
+      transactionId,
+      type: 'WITHDRAW',
+      status: 'COMPLETED',
+      amountCents: request.amountCents,
+      currency: 'VND',
+      description: request.description,
+      createdAt: response.createdAt,
+    });
+
+    for (const wallet of mockWallets.values()) {
+      if (wallet.userId === request.userId) {
+        wallet.balanceCents -= request.amountCents;
+        wallet.balanceAmount = wallet.balanceCents / 100;
+        break;
+      }
+    }
+
+    if (request.idempotencyKey) {
+      mockIdempotencyKeys.set(request.idempotencyKey, response);
+    }
     return response;
   }
 

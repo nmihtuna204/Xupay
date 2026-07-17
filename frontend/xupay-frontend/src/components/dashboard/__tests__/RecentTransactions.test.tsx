@@ -118,7 +118,8 @@ describe('RecentTransactions', () => {
     renderWithClient(<RecentTransactions userId="user-1" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Sent')).toBeInTheDocument()
+      // Type is rendered lowercase; the "capitalize" class only affects CSS
+      expect(screen.getByText('sent')).toBeInTheDocument()
       expect(screen.getByText('-$500.00')).toBeInTheDocument()
     })
   })
@@ -144,7 +145,8 @@ describe('RecentTransactions', () => {
     renderWithClient(<RecentTransactions userId="user-1" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Received')).toBeInTheDocument()
+      // Type is rendered lowercase; the "capitalize" class only affects CSS
+      expect(screen.getByText('received')).toBeInTheDocument()
       expect(screen.getByText('+$300.00')).toBeInTheDocument()
     })
   })

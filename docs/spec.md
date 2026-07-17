@@ -1151,5 +1151,3 @@ The current XUPAY layout specification already incorporates several foundational
 2.  **Clear Information Architecture:** The layout structure (Sidebar, Topbar, Main Content) is good for navigation and information hierarchy. Ensure the sidebar navigation labels are clear and logically grouped. Breadcrumbs (as mentioned in the spec for Wallet Detail) help with user orientation.
 3.  **Feedback & Loading States:** Implement clear loading skeletons for KPIs and charts as data loads, as outlined in the spec. This prevents layout shifts  and provides a smoother user experience. Ensure error states for data fetching are also handled gracefully.
 4.  **Accessibility:** While not explicitly a "design effect," ensuring the layout and components meet accessibility standards (sufficient color contrast, keyboard navigation) is crucial for UI/UX completeness and inclusivity.
-
-

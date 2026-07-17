@@ -114,7 +114,7 @@ export function PublicLayout({ children }: PublicLayoutProps) {
             
             <div className="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center">
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                 2025 XuPay. All rights reserved.
+                © 2025 XuPay. All rights reserved.
               </p>
               <div className="flex items-center gap-4 mt-4 md:mt-0">
                 <a href="#twitter" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">Twitter</a>

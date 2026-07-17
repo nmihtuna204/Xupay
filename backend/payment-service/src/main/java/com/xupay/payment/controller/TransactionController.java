@@ -1,8 +1,11 @@
 package com.xupay.payment.controller;
 
+import com.xupay.payment.dto.DepositRequest;
 import com.xupay.payment.dto.TransactionDetailResponse;
+import com.xupay.payment.dto.TransactionListResponse;
 import com.xupay.payment.dto.TransferRequest;
 import com.xupay.payment.dto.TransferResponse;
+import com.xupay.payment.dto.WithdrawRequest;
 import com.xupay.payment.service.TransactionService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +45,55 @@ public class TransactionController {
                 : HttpStatus.OK;
         
         return ResponseEntity.status(status).body(response);
+    }
+
+    /**
+     * Deposit funds into a user's wallet (TOPUP from external source).
+     * POST /api/payments/deposit
+     */
+    @PostMapping("/deposit")
+    public ResponseEntity<TransferResponse> processDeposit(@Valid @RequestBody DepositRequest request) {
+        log.info("REST request to process deposit: user={}, amount={}",
+                request.getUserId(), request.getAmountCents());
+
+        TransferResponse response = transactionService.processDeposit(request);
+
+        HttpStatus status = response.getStatus().name().equals("COMPLETED")
+                ? HttpStatus.CREATED
+                : HttpStatus.OK;
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    /**
+     * Withdraw funds from a user's wallet to an external destination.
+     * POST /api/payments/withdraw
+     */
+    @PostMapping("/withdraw")
+    public ResponseEntity<TransferResponse> processWithdraw(@Valid @RequestBody WithdrawRequest request) {
+        log.info("REST request to process withdrawal: user={}, amount={}",
+                request.getUserId(), request.getAmountCents());
+
+        TransferResponse response = transactionService.processWithdraw(request);
+
+        HttpStatus status = response.getStatus().name().equals("COMPLETED")
+                ? HttpStatus.CREATED
+                : HttpStatus.OK;
+
+        return ResponseEntity.status(status).body(response);
+    }
+
+    /**
+     * List transaction history (paged, newest first).
+     * GET /api/payments?userId=&page=&size=
+     */
+    @GetMapping
+    public ResponseEntity<TransactionListResponse> listTransactions(
+            @RequestParam(required = false) UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        log.info("REST request to list transactions: userId={}, page={}, size={}", userId, page, size);
+        return ResponseEntity.ok(transactionService.listTransactions(userId, page, size));
     }
 
     /**

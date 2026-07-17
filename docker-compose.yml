@@ -1,43 +1,32 @@
 # ========================================================
-# XuPay FinTech MVP - PRODUCTION DOCKER COMPOSE
+# XuPay - E-Wallet Microservices Platform
 # ========================================================
-# Created: December 17, 2025
-# Services: User, Payment, Audit + Infrastructure
-# Infrastructure: PostgreSQL x3, Redis, RabbitMQ, NGINX
+# Services:       User Service (8081), Payment Service (8082),
+#                 Frontend (3000)
+# Infrastructure: PostgreSQL x2, Redis
+#
+# Quick start:    docker compose up -d --build
+# Logs:           docker compose logs -f [service]
+# Stop:           docker compose down          (keep data)
+# Reset:          docker compose down -v       (wipe data)
+#
+# Secrets: override defaults by creating a .env file
+# (see .env.example). Defaults are for local development only.
 # ========================================================
 
-version: '3.8'
-
-# ========================================================
-# NETWORKS
-# ========================================================
 networks:
   xupay-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
 
-# ========================================================
-# VOLUMES (Persistent Data)
-# ========================================================
 volumes:
   postgres-user-data:
-    driver: local
   postgres-payment-data:
-    driver: local
   redis-data:
-    driver: local
-  rabbitmq-data:
-    driver: local
 
-# ========================================================
-# SERVICES
-# ========================================================
 services:
-  
+
   # ------------------------------------------------------
-  # DATABASE 1: USER SERVICE DATABASE
+  # DATABASE: USER SERVICE
   # ------------------------------------------------------
   postgres-user:
     image: postgres:15-alpine
@@ -46,7 +35,7 @@ services:
     environment:
       POSTGRES_DB: user_db
       POSTGRES_USER: user_service_user
-      POSTGRES_PASSWORD: UserS3rv1c3P@ss2025!
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-UserS3rv1c3P@ss2025!}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
       - "5432:5432"
@@ -54,24 +43,15 @@ services:
       - postgres-user-data:/var/lib/postgresql/data
       - ./infrastructure/db/user-service:/docker-entrypoint-initdb.d:ro
     networks:
-      xupay-network:
-        ipv4_address: 172.20.0.10
+      - xupay-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user_service_user -d user_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command: 
-      - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "shared_buffers=256MB"
-      - "-c"
-      - "effective_cache_size=1GB"
 
   # ------------------------------------------------------
-  # DATABASE 2: PAYMENT SERVICE DATABASE
+  # DATABASE: PAYMENT SERVICE
   # ------------------------------------------------------
   postgres-payment:
     image: postgres:15-alpine
@@ -80,93 +60,59 @@ services:
     environment:
       POSTGRES_DB: payment_db
       POSTGRES_USER: payment_service_user
-      POSTGRES_PASSWORD: P@ym3ntS3rv1c3P@ss2025!
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-P@ym3ntS3rv1c3P@ss2025!}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5433:5432"  # External port 5433 to avoid conflict
+      - "5433:5432"  # External 5433 to avoid conflict with postgres-user
     volumes:
       - postgres-payment-data:/var/lib/postgresql/data
       - ./infrastructure/db/payment-service:/docker-entrypoint-initdb.d:ro
     networks:
-      xupay-network:
-        ipv4_address: 172.20.0.11
+      - xupay-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U payment_service_user -d payment_db"]
       interval: 10s
       timeout: 5s
       retries: 5
-    command:
-      - "postgres"
-      - "-c"
-      - "max_connections=200"
-      - "-c"
-      - "shared_buffers=512MB"
-      - "-c"
-      - "effective_cache_size=2GB"
-      - "-c"
-      - "default_transaction_isolation=serializable"  # Critical for ledger
 
   # ------------------------------------------------------
-  # REDIS CACHE (Idempotency + Rate Limiting)
+  # REDIS (Idempotency Cache)
   # ------------------------------------------------------
   redis:
     image: redis:7-alpine
     container_name: xupay-redis
     restart: unless-stopped
+    environment:
+      # Exposed to the container so the healthcheck can authenticate
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d1sP@ss2025!}
     ports:
       - "6379:6379"
     volumes:
       - redis-data:/data
     networks:
-      xupay-network:
-        ipv4_address: 172.20.0.20
-    command: 
+      - xupay-network
+    command:
       - "redis-server"
       - "--appendonly"
       - "yes"
       - "--requirepass"
-      - "R3d1sP@ss2025!"
+      - "${REDIS_PASSWORD:-R3d1sP@ss2025!}"
       - "--maxmemory"
-      - "512mb"
+      - "256mb"
       - "--maxmemory-policy"
       - "allkeys-lru"
     healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep PONG"]
       interval: 10s
       timeout: 3s
       retries: 5
 
   # ------------------------------------------------------
-  # RABBITMQ (Event Bus)
-  # ------------------------------------------------------
-  rabbitmq:
-    image: rabbitmq:3.12-management-alpine
-    container_name: xupay-rabbitmq
-    restart: unless-stopped
-    environment:
-      RABBITMQ_DEFAULT_USER: xupay_admin
-      RABBITMQ_DEFAULT_PASS: RabbitMQP@ss2025!
-      RABBITMQ_DEFAULT_VHOST: /xupay
-    ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-    networks:
-      xupay-network:
-        ipv4_address: 172.20.0.21
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
-  # ------------------------------------------------------
-  # USER SERVICE (Java Spring Boot 3.4.1)
+  # USER SERVICE (Spring Boot, REST 8081 + gRPC 9091)
   # ------------------------------------------------------
   user-service:
     build:
-      context: ./backend/java-services/user-service
+      context: ./backend/user-service
       dockerfile: Dockerfile
     container_name: xupay-user-service
     restart: unless-stopped
@@ -174,54 +120,49 @@ services:
       # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-user:5432/user_db
       SPRING_DATASOURCE_USERNAME: user_service_user
-      SPRING_DATASOURCE_PASSWORD: UserS3rv1c3P@ss2025!
-      
-      # JPA/Hibernate
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_PASSWORD: ${USER_DB_PASSWORD:-UserS3rv1c3P@ss2025!}
+
+      # JPA/Hibernate + Flyway
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       SPRING_JPA_SHOW_SQL: "false"
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-      
-      # Flyway
       SPRING_FLYWAY_ENABLED: "true"
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
-      
+
       # Server
       SERVER_PORT: 8081
       SPRING_APPLICATION_NAME: user-service
-      
+
       # JWT
-      JWT_SECRET: YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!
+      JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!}
       JWT_EXPIRATION: 86400000  # 24 hours
-      
+
       # gRPC Server
       GRPC_SERVER_PORT: 9091
-      
+
       # Logging
       LOGGING_LEVEL_ROOT: INFO
-      LOGGING_LEVEL_COM_XUPAY: DEBUG
-      
+      LOGGING_LEVEL_COM_XUPAY: INFO
     ports:
       - "8081:8081"
-      - "9091:9091"  # gRPC port
+      - "9091:9091"  # gRPC
     depends_on:
       postgres-user:
         condition: service_healthy
     networks:
-      xupay-network:
-        ipv4_address: 172.20.0.30
+      - xupay-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
 
   # ------------------------------------------------------
-  # PAYMENT SERVICE (Java Spring Boot 3.4.1)
+  # PAYMENT SERVICE (Spring Boot, REST 8082)
   # ------------------------------------------------------
   payment-service:
     build:
-      context: ./backend/java-services/payment-service
+      context: ./backend/payment-service
       dockerfile: Dockerfile
     container_name: xupay-payment-service
     restart: unless-stopped
@@ -229,36 +170,31 @@ services:
       # Database
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-payment:5432/payment_db
       SPRING_DATASOURCE_USERNAME: payment_service_user
-      SPRING_DATASOURCE_PASSWORD: P@ym3ntS3rv1c3P@ss2025!
-      
-      # JPA/Hibernate - CRITICAL: SERIALIZABLE isolation
-      SPRING_JPA_HIBERNATE_DDL_AUTO: validate
+      SPRING_DATASOURCE_PASSWORD: ${PAYMENT_DB_PASSWORD:-P@ym3ntS3rv1c3P@ss2025!}
+
+      # JPA/Hibernate + Flyway
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${JPA_DDL_AUTO:-update}
       SPRING_JPA_SHOW_SQL: "false"
-      SPRING_JPA_PROPERTIES_HIBERNATE_DIALECT: org.hibernate.dialect.PostgreSQLDialect
-      SPRING_JPA_PROPERTIES_HIBERNATE_CONNECTION_ISOLATION: 8  # SERIALIZABLE
-      
-      # Flyway
       SPRING_FLYWAY_ENABLED: "true"
       SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
-      
+
       # Server
       SERVER_PORT: 8082
       SPRING_APPLICATION_NAME: payment-service
-      
-      # Redis (Idempotency Cache)
-      SPRING_REDIS_HOST: redis
-      SPRING_REDIS_PORT: 6379
-      SPRING_REDIS_PASSWORD: R3d1sP@ss2025!
-      SPRING_REDIS_TIMEOUT: 2000
-      
-      # gRPC Client (User Service)
+
+      # Redis (Spring Boot 3 keys: spring.data.redis.*)
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d1sP@ss2025!}
+      SPRING_DATA_REDIS_TIMEOUT: 2000
+
+      # gRPC Client -> User Service
       GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service:9091
       GRPC_CLIENT_USER_SERVICE_NEGOTIATION_TYPE: plaintext
-      
+
       # Logging
       LOGGING_LEVEL_ROOT: INFO
-      LOGGING_LEVEL_COM_XUPAY: DEBUG
-      
+      LOGGING_LEVEL_COM_XUPAY: INFO
     ports:
       - "8082:8082"
     depends_on:
@@ -266,47 +202,36 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
       user-service:
         condition: service_healthy
     networks:
-      xupay-network:
-        ipv4_address: 172.20.0.31
+      - xupay-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
-      interval: 30s
+      interval: 15s
       timeout: 10s
-      retries: 3
+      retries: 5
       start_period: 60s
 
-# ========================================================
-# NOTES
-# ========================================================
-# MVP CONFIGURATION (2 Services: User + Payment)
-# Audit Service removed to simplify architecture
-# RabbitMQ removed (can add back for async events later)
-#
-# To start all services:
-#   docker-compose up -d
-#
-# To view logs:
-#   docker-compose logs -f [service-name]
-#
-# To stop all services:
-#   docker-compose down
-#
-# To destroy everything (including volumes):
-#   docker-compose down -v
-#
-# Access URLs:
-#   User Service:     http://localhost:8081
-#   Payment Service:  http://localhost:8082
-#
-# Database Connections (from host):
-#   User DB:     postgresql://user_service_user:UserS3rv1c3P@ss2025!@localhost:5432/user_db
-#   Payment DB:  postgresql://payment_service_user:P@ym3ntS3rv1c3P@ss2025!@localhost:5433/payment_db
-#
-# Redis Connection:
-#   redis-cli -h localhost -p 6379 -a 'R3d1sP@ss2025!'
-# ========================================================
+  # ------------------------------------------------------
+  # FRONTEND (Next.js 16)
+  # ------------------------------------------------------
+  frontend:
+    build:
+      context: ./frontend/xupay-frontend
+      dockerfile: Dockerfile
+      args:
+        # URLs the BROWSER uses to reach the APIs (host-mapped ports)
+        NEXT_PUBLIC_USER_SERVICE_URL: ${NEXT_PUBLIC_USER_SERVICE_URL:-http://localhost:8081}
+        NEXT_PUBLIC_PAYMENT_SERVICE_URL: ${NEXT_PUBLIC_PAYMENT_SERVICE_URL:-http://localhost:8082}
+    container_name: xupay-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      user-service:
+        condition: service_healthy
+      payment-service:
+        condition: service_healthy
+    networks:
+      - xupay-network

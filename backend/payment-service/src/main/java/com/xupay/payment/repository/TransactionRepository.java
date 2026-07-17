@@ -2,6 +2,8 @@ package com.xupay.payment.repository;
 
 import com.xupay.payment.entity.Transaction;
 import com.xupay.payment.entity.enums.TransactionStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -29,6 +31,14 @@ public interface TransactionRepository extends JpaRepository<Transaction, UUID> 
     List<Transaction> findByStatusAndCreatedAtBefore(TransactionStatus status, LocalDateTime createdAt);
 
     List<Transaction> findByFromUserIdAndCreatedAtBetween(UUID fromUserId, LocalDateTime start, LocalDateTime end);
+
+    /**
+     * Paged transaction history for a user (sent or received), newest first.
+     * Used by GET /api/payments list endpoint.
+     */
+    Page<Transaction> findByFromUserIdOrToUserIdOrderByCreatedAtDesc(UUID fromUserId, UUID toUserId, Pageable pageable);
+
+    Page<Transaction> findAllByOrderByCreatedAtDesc(Pageable pageable);
 
     /**
      * Count transactions from user after specific time.
