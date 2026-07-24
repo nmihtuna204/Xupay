@@ -30,10 +30,10 @@ export const STATUS_COLORS = {
   critical: "#d03b3b",
 } as const;
 
-// Chart chrome for the dark surface.
+// Chart chrome for the dark surface — hairline grid, muted axes, flat tooltip.
 export const CHART_INK = {
-  grid: "#2c2c2a",
-  axis: "#898781",
-  tooltipBg: "#0d1220",
-  tooltipBorder: "rgba(255,255,255,0.12)",
+  grid: "rgba(255,255,255,0.04)",
+  axis: "#8a8a91",
+  tooltipBg: "#141416",
+  tooltipBorder: "rgba(255,255,255,0.08)",
 };

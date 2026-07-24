@@ -1,5 +1,10 @@
 import { cn } from "@/lib/utils";
 
+/**
+ * Titled chart block. Intentionally borderless and boxless — the chart
+ * breathes on the page and is separated from siblings by whitespace, not a
+ * card border. Only the title, description and optional action sit above it.
+ */
 export function ChartCard({
   title,
   description,
@@ -14,11 +19,11 @@ export function ChartCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className={cn("glass-card p-5", className)}>
-      <div className="mb-4 flex items-start justify-between gap-4">
+    <div className={cn(className)}>
+      <div className="mb-6 flex items-start justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold">{title}</h3>
-          {description && <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>}
+          <p className="text-sm font-medium">{title}</p>
+          {description && <p className="mt-1 text-xs text-muted-foreground">{description}</p>}
         </div>
         {action}
       </div>
