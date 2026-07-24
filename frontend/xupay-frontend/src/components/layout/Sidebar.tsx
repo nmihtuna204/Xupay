@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Wallet } from "lucide-react";
 import { mainNavigation, isNavItemActive } from "@/config/navigation";
 import { cn } from "@/lib/utils";
 
@@ -12,21 +11,21 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4",
+        "flex h-full w-[220px] flex-col border-r border-sidebar-border bg-sidebar px-3 py-5",
         className
       )}
     >
-      <Link href="/dashboard" className="flex items-center gap-2 px-2 py-2">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-from to-accent-to">
-          <Wallet className="size-4 text-white" />
-        </span>
-        <span className="text-lg font-semibold tracking-tight">XuPay</span>
+      <Link
+        href="/dashboard"
+        className="px-3 pb-2 text-sm font-semibold tracking-tight"
+      >
+        XuPay
       </Link>
 
-      <div className="mt-6 flex flex-1 flex-col gap-5 overflow-y-auto">
+      <div className="mt-7 flex flex-1 flex-col gap-6 overflow-y-auto">
         {mainNavigation.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            <p className="px-3 pb-2 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
               {group.label}
             </p>
             <ul className="flex flex-col gap-0.5">
@@ -39,11 +38,13 @@ export function Sidebar({ className }: { className?: string }) {
                       href={item.href}
                       data-active={active}
                       className={cn(
-                        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
-                        active &&
-                          "bg-sidebar-accent text-sidebar-foreground"
+                        "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground",
+                        active && "bg-white/[0.04] text-sidebar-foreground"
                       )}
                     >
+                      {active && (
+                        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                      )}
                       <Icon className="size-4 shrink-0" />
                       {item.label}
                     </Link>
