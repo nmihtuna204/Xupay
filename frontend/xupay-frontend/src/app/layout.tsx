@@ -24,8 +24,30 @@ export default function RootLayout({
       lang="en"
       className={`dark ${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
+      // The reveal boot script adds `.reveal-ready` to <html> before hydration
+      // (same pattern as theme scripts) — suppress the expected mismatch.
+      suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
+        {/*
+          Reveal boot script — runs before content paints (adds `.reveal-ready`
+          so the hidden state applies with no flash) and drives its own
+          IntersectionObserver in plain JS. This means scroll reveals work even
+          if React hydration fails; and if JS is disabled entirely, the class is
+          never added so content stays fully visible. Idempotent with <Reveal>.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){var r=document.documentElement;r.classList.add('reveal-ready');" +
+              "function rv(e){e.classList.add('is-revealed')}" +
+              "function init(){var els=document.querySelectorAll('.reveal');" +
+              "if(!('IntersectionObserver' in window)){for(var i=0;i<els.length;i++)rv(els[i]);return;}" +
+              "var io=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){rv(e.target);io.unobserve(e.target)}})},{threshold:0.15,rootMargin:'0px 0px -8% 0px'});" +
+              "for(var i=0;i<els.length;i++)io.observe(els[i]);}" +
+              "if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);})();",
+          }}
+        />
         <QueryProvider>
           {children}
           <Toaster position="top-right" />

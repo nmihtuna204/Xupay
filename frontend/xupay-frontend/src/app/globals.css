@@ -202,10 +202,13 @@
   }
 }
 
-/* Reveal-on-scroll: opacity+translateY, driven by an IntersectionObserver
-   that toggles [data-reveal] -> [data-reveal="in"]. Motion is purposeful
-   (expo ease, ~700ms) and fully disabled under reduced-motion. */
-[data-reveal] {
+/* Reveal-on-scroll: a `.reveal` element rises+fades in when it enters view.
+   The hidden state is gated behind `.reveal-ready` (added to <html> by a boot
+   script only when JS is actually running) — so if JS is off or hydration
+   fails, content is simply VISIBLE with no animation, never stuck invisible.
+   Both a plain boot script and the React <Reveal> add `.is-revealed`, so the
+   reveal survives even a broken React hydration. */
+.reveal-ready .reveal {
   opacity: 0;
   transform: translateY(24px);
   transition:
@@ -213,7 +216,7 @@
     transform 0.7s var(--ease-out-expo);
   will-change: opacity, transform;
 }
-[data-reveal="in"] {
+.reveal-ready .reveal.is-revealed {
   opacity: 1;
   transform: none;
 }
@@ -227,7 +230,7 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-  [data-reveal] {
+  .reveal-ready .reveal {
     opacity: 1;
     transform: none;
   }

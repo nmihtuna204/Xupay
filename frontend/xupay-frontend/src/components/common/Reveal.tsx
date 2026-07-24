@@ -1,15 +1,19 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
 /**
- * Reveal-on-scroll wrapper. Renders a `[data-reveal]` element and, via an
- * IntersectionObserver, flips it to `[data-reveal="in"]` the first time it
- * enters the viewport — the fade+rise transition itself lives in globals.css
- * and is disabled under prefers-reduced-motion.
+ * Reveal-on-scroll wrapper. Renders a `.reveal` element and, via an
+ * IntersectionObserver, adds `.is-revealed` the first time it enters view —
+ * the fade+rise transition lives in globals.css and is gated behind
+ * `.reveal-ready` (set by the boot script in the root layout).
  *
- * The observer toggles the DOM attribute directly (no React state), so there
- * is no re-render and nothing for the React Compiler to memoize.
+ * Because the hidden state only applies once `.reveal-ready` is present AND a
+ * plain boot script also reveals on scroll, content is never left invisible
+ * if JS is off or React hydration fails. The observer here is the primary
+ * path (and handles client-side navigation); it only ADDS a class, so it
+ * can't conflict with the boot script or with hydration.
  */
 export function Reveal({
   children,
@@ -27,11 +31,15 @@ export function Reveal({
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      node.classList.add("is-revealed");
+      return;
+    }
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
-            entry.target.setAttribute("data-reveal", "in");
+            entry.target.classList.add("is-revealed");
             observer.unobserve(entry.target);
           }
         }
@@ -45,9 +53,11 @@ export function Reveal({
   return (
     <Tag
       ref={ref}
-      data-reveal=""
-      className={className}
+      className={cn("reveal", className)}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
+      // The boot script may add `.is-revealed` before hydration; let React
+      // keep it rather than resetting the class.
+      suppressHydrationWarning
     >
       {children}
     </Tag>
