@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Send, PiggyBank, Banknote } from "lucide-react";
+import { Send, PiggyBank, Banknote, ArrowUpRight } from "lucide-react";
 
 const ACTIONS = [
   { href: "/payments/transfer", label: "Send money", icon: Send },
@@ -9,17 +9,18 @@ const ACTIONS = [
 
 export function QuickActions() {
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid gap-3 sm:grid-cols-3">
       {ACTIONS.map((action) => (
         <Link
           key={action.href}
           href={action.href}
-          className="glass-card flex flex-col items-center gap-2 px-4 py-5 text-center transition-colors hover:bg-surface-hover"
+          className="group glass-card flex items-center justify-between px-5 py-4 transition-colors hover:bg-surface-hover"
         >
-          <span className="flex size-9 items-center justify-center rounded-full bg-gradient-to-br from-accent-from to-accent-to">
-            <action.icon className="size-4 text-white" />
+          <span className="flex items-center gap-3">
+            <action.icon className="size-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{action.label}</span>
           </span>
-          <span className="text-sm font-medium">{action.label}</span>
+          <ArrowUpRight className="size-4 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
         </Link>
       ))}
     </div>

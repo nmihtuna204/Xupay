@@ -25,24 +25,23 @@ export default function DashboardPage() {
         description="Here's what's happening with your wallet."
       />
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-1">
-          {walletQuery.isLoading ? (
-            <Skeleton className="h-40 rounded-2xl" />
-          ) : walletQuery.data ? (
-            <WalletCard wallet={walletQuery.data} />
-          ) : (
-            <EmptyState title="No wallet found" description="A wallet is created automatically on signup." />
-          )}
-        </div>
-        <div className="lg:col-span-2">
-          <QuickActions />
-        </div>
+      {/* Balance hero — full width, the primary object on the page. */}
+      {walletQuery.isLoading ? (
+        <Skeleton className="h-52 rounded-xl" />
+      ) : walletQuery.data ? (
+        <WalletCard wallet={walletQuery.data} />
+      ) : (
+        <EmptyState title="No wallet found" description="A wallet is created automatically on signup." />
+      )}
+
+      <div className="mt-10">
+        <p className="kicker mb-3">Quick actions</p>
+        <QuickActions />
       </div>
 
-      <div className="glass-card mt-4 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="font-medium">Recent transactions</h2>
+      <div className="mt-12">
+        <div className="mb-5 flex items-center justify-between">
+          <p className="kicker">Recent transactions</p>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/transactions">
               View all <ArrowRight />
@@ -52,7 +51,7 @@ export default function DashboardPage() {
         {transactionsQuery.isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         ) : (
