@@ -84,7 +84,7 @@ export function LoginForm() {
           )}
         />
 
-        <Button type="submit" className="mt-2 w-full" disabled={loginMutation.isPending}>
+        <Button type="submit" size="lg" className="mt-2 w-full" disabled={loginMutation.isPending}>
           {loginMutation.isPending && <Loader2 className="animate-spin" />}
           Sign in
         </Button>

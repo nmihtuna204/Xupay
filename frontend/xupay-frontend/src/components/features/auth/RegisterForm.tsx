@@ -148,7 +148,7 @@ export function RegisterForm() {
           )}
         />
 
-        <Button type="submit" className="mt-2 w-full" disabled={registerMutation.isPending}>
+        <Button type="submit" size="lg" className="mt-2 w-full" disabled={registerMutation.isPending}>
           {registerMutation.isPending && <Loader2 className="animate-spin" />}
           Create account
         </Button>
