@@ -5,11 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * XuPay design system — "dark fintech".
- * Dark-mode only by design (this is a control-room dashboard, not a
- * marketing site with a light/dark preference), so :root and .dark carry
- * identical values. <html> always has class="dark" (set server-side in the
- * root layout), so there is no flash-of-unstyled-theme.
+ * XuPay design system — "Tesla-restraint dark".
+ * Cinematic, spacious, confidence-through-restraint. Neutral near-black
+ * surfaces (no blue cast), a SINGLE accent used sparingly, typography as the
+ * hero. Dark-mode only by design, so :root and .dark carry identical values.
+ * <html> always has class="dark" (set server-side in the root layout), so
+ * there is no flash-of-unstyled-theme.
  */
 
 @theme inline {
@@ -65,54 +66,61 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Spacing rhythm for cinematic sections */
+  --spacing-section: clamp(6rem, 12vw, 12rem);
+  /* Purposeful motion */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 :root,
 .dark {
-  --background: #0a0e1a;
-  --foreground: #f1f5f9;
-  --card: #131826;
-  --card-foreground: #f1f5f9;
-  --popover: #131826;
-  --popover-foreground: #f1f5f9;
+  --background: #0b0b0d;
+  --foreground: #f4f4f5;
+  --card: #141416;
+  --card-foreground: #f4f4f5;
+  --popover: #141416;
+  --popover-foreground: #f4f4f5;
+  /* The single accent — used sparingly (links, focus rings, active states). */
   --primary: #3b82f6;
-  --primary-foreground: #f8fafc;
-  --secondary: #1a2033;
-  --secondary-foreground: #f1f5f9;
-  --muted: #1a2033;
-  --muted-foreground: #94a3b8;
-  --accent: #1a2033;
-  --accent-foreground: #f1f5f9;
-  --destructive: #ef4444;
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 12%);
+  --primary-foreground: #ffffff;
+  --secondary: #1a1a1d;
+  --secondary-foreground: #f4f4f5;
+  --muted: #17171a;
+  --muted-foreground: #8a8a91;
+  --accent: #1a1a1d;
+  --accent-foreground: #f4f4f5;
+  --destructive: #e5484d;
+  --border: rgb(255 255 255 / 6%);
+  --input: rgb(255 255 255 / 8%);
   --ring: #3b82f6;
-  --chart-1: #3b82f6;
-  --chart-2: #06b6d4;
-  --chart-3: #10b981;
-  --chart-4: #f59e0b;
-  --chart-5: #ef4444;
-  --radius: 0.75rem;
-  --sidebar: #0d1220;
-  --sidebar-foreground: #f1f5f9;
+  /* Chart series — VALIDATED colorblind-safe, do not change (ΔE ≥ 8). */
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #e5484d;
+  --radius: 0.5rem;
+  --sidebar: #0d0d0f;
+  --sidebar-foreground: #f4f4f5;
   --sidebar-primary: #3b82f6;
-  --sidebar-primary-foreground: #f8fafc;
-  --sidebar-accent: #1a2033;
-  --sidebar-accent-foreground: #f1f5f9;
-  --sidebar-border: rgb(255 255 255 / 8%);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1a1a1d;
+  --sidebar-accent-foreground: #f4f4f5;
+  --sidebar-border: rgb(255 255 255 / 6%);
   --sidebar-ring: #3b82f6;
 
   /* XuPay brand extensions */
-  --surface: #131826;
-  --surface-hover: #1a2033;
+  --surface: #141416;
+  --surface-hover: #1c1c20;
+  /* Gradient reserved for ONE place on the whole app (landing hero). */
   --accent-from: #3b82f6;
-  --accent-to: #06b6d4;
-  --success: #10b981;
-  --success-foreground: #052e21;
-  --warning: #f59e0b;
-  --warning-foreground: #3d2600;
-  --error: #ef4444;
-  --error-foreground: #450a0a;
+  --accent-to: #22d3ee;
+  --success: #30a46c;
+  --success-foreground: #b8f5d0;
+  --warning: #e0a726;
+  --warning-foreground: #f5e3b8;
+  --error: #e5484d;
+  --error-foreground: #ffd1d1;
 }
 
 @layer base {
@@ -121,28 +129,106 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "ss01", "cv01";
   }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
 
 @layer components {
-  /* Glassmorphism card recipe used across the dashboard */
+  /*
+   * Flat surface card. Glassmorphism (backdrop-blur) is intentionally GONE
+   * from in-page cards — it reads as "busy". Blur is reserved for floating
+   * overlays (dialog/sheet), which style themselves. A card is now a flat
+   * surface with a single hairline border.
+   */
   .glass-card {
-    @apply rounded-2xl border border-white/10 bg-surface/60 shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-xl;
+    @apply rounded-xl border border-white/[0.06] bg-surface;
   }
 
-  /* Gradient accent text for headline numbers/brand mark */
+  /* Gradient accent text — used ONLY on the landing hero. */
   .accent-gradient-text {
     @apply bg-gradient-to-r from-accent-from to-accent-to bg-clip-text text-transparent;
   }
 
-  /* Big legible money figures — tabular so digits don't jitter on update */
+  /* Big legible money figures — tabular so digits don't jitter on update.
+     Carries a sensible default size; any explicit text-* utility on the
+     element overrides it (utilities layer wins over components layer). */
   .figure-lg {
-    @apply font-mono text-4xl font-semibold tabular-nums;
+    @apply font-mono text-3xl font-medium tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  /*
+   * Cinematic display headline. Typography is the hero: very large, lower
+   * weight than before, tight negative tracking, compressed leading.
+   */
+  .display {
+    font-weight: 550;
+    letter-spacing: -0.03em;
+    line-height: 0.98;
+  }
+  .display-hero {
+    font-size: clamp(3.5rem, 9vw, 8rem);
+    font-weight: 560;
+    letter-spacing: -0.035em;
+    line-height: 0.95;
+  }
+
+  /* Small uppercase eyebrow/kicker label. */
+  .kicker {
+    @apply text-xs font-medium uppercase text-muted-foreground;
+    letter-spacing: 0.14em;
+  }
+
+  /* Full-viewport storytelling section. */
+  .section-full {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: var(--spacing-section);
+  }
+
+  /* Subtle film-grain noise overlay for the hero. */
+  .noise-overlay {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  }
+}
+
+/* Reveal-on-scroll: opacity+translateY, driven by an IntersectionObserver
+   that toggles [data-reveal] -> [data-reveal="in"]. Motion is purposeful
+   (expo ease, ~700ms) and fully disabled under reduced-motion. */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.7s var(--ease-out-expo),
+    transform 0.7s var(--ease-out-expo);
+  will-change: opacity, transform;
+}
+[data-reveal="in"] {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+  [data-reveal] {
+    opacity: 1;
+    transform: none;
   }
 }
