@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Copy, Snowflake, Sun } from "lucide-react";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -45,12 +45,11 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
   }
 
   return (
-    <div className="glass-card relative overflow-hidden p-8">
-      <div className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-gradient-to-br from-accent-from/20 to-accent-to/10 blur-3xl" />
-      <div className="relative flex flex-wrap items-start justify-between gap-4">
+    <div className="glass-card p-8 sm:p-10">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-muted-foreground">Personal wallet</p>
-          <p className="figure-lg mt-2 text-5xl">
+          <p className="kicker">Personal wallet</p>
+          <p className="figure-lg mt-4 text-[clamp(2.25rem,5vw,4rem)] leading-none">
             {formatCurrencyFromCents(wallet.balanceCents, wallet.currency)}
           </p>
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
@@ -64,13 +63,9 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
 
         <div className="flex flex-col items-end gap-2">
           {wallet.isFrozen ? (
-            <Badge variant="outline" className="gap-1 border-warning/40 text-warning">
-              <Snowflake className="size-3" /> Frozen
-            </Badge>
+            <StatusBadge tone="warning" label="Frozen" />
           ) : (
-            <Badge variant="outline" className="gap-1 border-success/40 text-success">
-              Active
-            </Badge>
+            <StatusBadge tone="success" label="Active" />
           )}
 
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

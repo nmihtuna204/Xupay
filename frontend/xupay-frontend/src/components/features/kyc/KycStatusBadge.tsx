@@ -1,17 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { StatusBadge, type StatusTone } from "@/components/common/StatusBadge";
 import type { DocumentVerificationStatus } from "@/lib/api/user-service/kyc";
 
-const STYLES: Record<DocumentVerificationStatus, string> = {
-  APPROVED: "border-success/40 text-success",
-  PENDING: "border-warning/40 text-warning",
-  REJECTED: "border-error/40 text-error",
+const TONE: Record<DocumentVerificationStatus, StatusTone> = {
+  APPROVED: "success",
+  PENDING: "warning",
+  REJECTED: "error",
 };
 
 export function KycStatusBadge({ status }: { status: DocumentVerificationStatus }) {
-  return (
-    <Badge variant="outline" className={cn("font-medium capitalize", STYLES[status])}>
-      {status.toLowerCase()}
-    </Badge>
-  );
+  return <StatusBadge tone={TONE[status]} label={status.toLowerCase()} />;
 }
