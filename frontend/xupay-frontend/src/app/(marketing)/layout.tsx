@@ -1,34 +1,32 @@
 import Link from "next/link";
-import { Wallet } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <header className="border-b border-border/60">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-from to-accent-to">
-              <Wallet className="size-4 text-white" />
-            </span>
-            <span className="text-lg font-semibold tracking-tight">XuPay</span>
+    <div className="relative min-h-svh bg-background">
+      {/* Thin, transparent overlay header — floats over the cinematic sections. */}
+      <header className="fixed inset-x-0 top-0 z-50">
+        <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
+          <Link href="/" className="text-sm font-semibold tracking-tight">
+            XuPay
           </Link>
-          <nav className="flex items-center gap-2">
-            <Button variant="ghost" asChild>
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/register">Get started</Link>
-            </Button>
+          <nav className="flex items-center gap-6 text-xs font-medium uppercase tracking-[0.1em]">
+            <Link
+              href="/login"
+              className="text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-full bg-foreground px-4 py-2 text-background transition-opacity hover:opacity-90"
+            >
+              Get started
+            </Link>
           </nav>
         </div>
       </header>
 
-      <main className="flex-1">{children}</main>
-
-      <footer className="border-t border-border/60 py-8 text-center text-sm text-muted-foreground">
-        XuPay — a ledger-accurate fintech platform built as a portfolio project on Next.js 16 and Spring Boot.
-      </footer>
+      {children}
     </div>
   );
 }
