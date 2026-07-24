@@ -1,100 +1,73 @@
-/* ============================================
-   TOPBAR - Top navigation bar
-   Layer 6: Layout Component
-   ============================================ */
+"use client";
 
-'use client'
+import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import Link from "next/link";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { MobileNav } from "./MobileNav";
+import { useAuth } from "@/hooks/use-auth";
 
-import { usePathname } from 'next/navigation'
-import { findActiveNavItem } from '@/config/navigation'
-import { UserMenu } from './UserMenu'
-import { ThemeToggle } from '@/components/common'
-import { Bell, Menu, Search, Plus, Command } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/cn'
+const KYC_TIER_LABEL: Record<string, string> = {
+  TIER_0: "Unverified",
+  TIER_1: "Basic",
+  TIER_2: "Verified",
+  TIER_3: "Premium",
+};
 
-// ============================================
-// PROPS
-// ============================================
-
-interface TopbarProps {
-  onMenuClick?: () => void
-  className?: string
-}
-
-// ============================================
-// COMPONENT
-// ============================================
-
-export function Topbar({ onMenuClick, className }: TopbarProps) {
-  const pathname = usePathname()
-  const activeItem = findActiveNavItem(pathname)
+export function Topbar() {
+  const { user, logout } = useAuth();
+  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "??";
 
   return (
-    <header
-      className={cn(
-        'flex items-center justify-between h-16 px-4 lg:px-6 border-b border-border/60',
-        'bg-card supports-[backdrop-filter]:bg-card/70 backdrop-blur',
-        className
-      )}
-    >
-      {/* Left Section */}
-      <div className="flex items-center gap-4">
-        {/* Mobile Menu Button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden"
-          onClick={onMenuClick}
-          aria-label="Toggle menu"
-        >
-          <Menu className="w-5 h-5" />
-        </Button>
-
-        {/* Page Title */}
-        <div className="block">
-          <h1 className="text-lg font-semibold">{activeItem?.label ?? 'Dashboard'}</h1>
-        </div>
-      </div>
-
-      {/* Center Section - Search */}
-      <div className="flex flex-1 max-w-md mx-8 min-w-0">
-        <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="Search transactions, wallets..."
-            className="pl-10 bg-bg-secondary border border-border rounded-lg focus-visible:ring-0 focus:border-primary"
-          />
-        </div>
-      </div>
-
-      {/* Right Section */}
-      <div className="flex items-center gap-2">
-        {/* Theme Toggle */}
-        <ThemeToggle />
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative" aria-label="Notifications">
-          <Bell className="w-5 h-5" />
-          {/* Notification Badge */}
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-error" />
-        </Button>
-
-        {/* Quick Actions */}
-        <Button variant="ghost" size="icon" aria-label="New">
-          <Plus className="w-5 h-5" />
-        </Button>
-        <Button variant="ghost" size="icon" aria-label="Command Palette">
-          <Command className="w-5 h-5" />
-        </Button>
-
-        {/* User Menu */}
-        <div className="ml-2 pl-2 border-l border-border">
-          <UserMenu />
-        </div>
+    <header className="flex h-14 items-center justify-between border-b border-border px-4 sm:px-6">
+      <MobileNav />
+      <div className="flex items-center gap-3">
+        {user && (
+          <Badge variant="outline" className="hidden sm:inline-flex">
+            {KYC_TIER_LABEL[user.kycTier] ?? user.kycTier}
+          </Badge>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger className="flex items-center gap-2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <Avatar className="size-8">
+              <AvatarFallback className="bg-gradient-to-br from-accent-from to-accent-to text-xs font-medium text-white">
+                {initials}
+              </AvatarFallback>
+            </Avatar>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel className="flex flex-col">
+              <span className="font-medium">
+                {user ? `${user.firstName} ${user.lastName}` : "Loading…"}
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">{user?.email}</span>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <UserIcon /> Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/settings">
+                <Settings /> Settings
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => logout()}>
+              <LogOut /> Log out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

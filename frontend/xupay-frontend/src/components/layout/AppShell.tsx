@@ -1,65 +1,14 @@
-/* ============================================
-   APP SHELL - Main application layout wrapper
-   Layer 6: Layout Component (root layout)
-   ============================================ */
+import { Sidebar } from "./Sidebar";
+import { Topbar } from "./Topbar";
 
-'use client'
-
-import { useState, type ReactNode } from 'react'
-import { Sidebar } from './Sidebar'
-import { Topbar } from './Topbar'
-import { MobileSidebar } from './MobileSidebar'
-import { cn } from '@/lib/cn'
-
-// ============================================
-// PROPS
-// ============================================
-
-interface AppShellProps {
-  children: ReactNode
-  className?: string
-}
-
-// ============================================
-// COMPONENT
-// ============================================
-
-export function AppShell({ children, className }: AppShellProps) {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
+export function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Desktop Sidebar */}
-      <div className="hidden lg:block flex-shrink-0">
-        <Sidebar className="h-full" />
-      </div>
-
-      {/* Mobile Sidebar */}
-      <MobileSidebar
-        open={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
-      />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Topbar */}
-        <Topbar
-          onMenuClick={() => setMobileMenuOpen(true)}
-          className="flex-shrink-0"
-        />
-
-        {/* Page Content */}
-        <main
-          className={cn(
-            'flex-1 overflow-y-auto p-4 lg:p-6 bg-muted/30',
-            className
-          )}
-        >
-          <div className="max-w-7xl mx-auto">
-            {children}
-          </div>
-        </main>
+    <div className="flex h-dvh overflow-hidden bg-background">
+      <Sidebar className="hidden md:flex" />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Topbar />
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6">{children}</main>
       </div>
     </div>
-  )
+  );
 }

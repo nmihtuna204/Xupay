@@ -1,58 +1,33 @@
-'use client'
+import Link from "next/link";
+import { Wallet } from "lucide-react";
 
-import type { ReactNode } from 'react'
-
-interface AuthLayoutProps {
-  children: ReactNode
-}
-
-export default function AuthLayout({ children }: AuthLayoutProps) {
+export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen w-screen flex overflow-hidden bg-gray-900">
-      {/* LEFT SIDE - Dark Form Section */}
-      <div className="w-1/2 flex flex-col items-center justify-center px-8 py-12 bg-gray-900 overflow-y-auto">
-        <div className="w-full max-w-md">
-          {children}
-        </div>
+    <div className="grid min-h-dvh lg:grid-cols-2">
+      <div className="flex flex-col justify-center px-6 py-12 sm:px-12 lg:px-20">
+        <Link href="/" className="mb-10 flex items-center gap-2">
+          <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-from to-accent-to">
+            <Wallet className="size-4 text-white" />
+          </span>
+          <span className="text-lg font-semibold tracking-tight">XuPay</span>
+        </Link>
+        <div className="mx-auto w-full max-w-sm">{children}</div>
       </div>
 
-      {/* RIGHT SIDE - Gradient Decorative Section */}
-      <div className="w-1/2 relative overflow-hidden bg-gradient-to-br from-orange-500 via-orange-400 to-orange-600">
-        
-        {/* Top-Left Decorative Circle */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
-
-        {/* Middle Decorative Blob */}
-        <div className="absolute top-1/2 right-0 w-80 h-80 bg-white opacity-5 rounded-full -mr-40"></div>
-
-        {/* Bottom Decorative Shapes */}
-        <div className="absolute bottom-0 left-0 w-full h-64 bg-gradient-to-t from-orange-700 to-transparent opacity-40"></div>
-        
-        {/* Diagonal Line Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-orange-700 opacity-20"></div>
-
-        {/* Content Container */}
-        <div className="relative h-full flex flex-col items-center justify-center px-8 z-10">
-          
-          {/* Welcome Message */}
-          <div className="text-center text-white max-w-sm">
-            <h2 className="text-5xl font-bold mb-6 leading-tight">
-              WELCOME!
-            </h2>
-            
-            <p className="text-lg font-light leading-relaxed opacity-95">
-              We're delighted to have you here. If you need any assistance, feel free to reach out.
-            </p>
-          </div>
-
-          {/* Bottom Security Message */}
-          <div className="absolute bottom-12 left-0 right-0 text-center">
-            <p className="text-white text-sm font-medium opacity-90">
-              Bank-grade security for your digital transactions
-            </p>
-          </div>
+      <div className="relative hidden overflow-hidden bg-gradient-to-br from-accent-from via-accent-from to-accent-to lg:flex lg:flex-col lg:items-center lg:justify-center lg:p-16">
+        <div className="pointer-events-none absolute -right-24 -top-24 size-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-32 -left-16 size-96 rounded-full bg-white/10 blur-3xl" />
+        <div className="relative z-10 max-w-md text-center text-white">
+          <h2 className="text-3xl font-semibold tracking-tight">
+            Bank-grade security for your digital transactions
+          </h2>
+          <p className="mt-4 text-white/80">
+            Ledger-accurate transfers, real-time fraud detection, and full compliance
+            tooling — built on the same architecture patterns used by production
+            payment platforms.
+          </p>
         </div>
       </div>
     </div>
-  )
+  );
 }

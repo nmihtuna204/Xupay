@@ -1,15 +1,10 @@
-/* ============================================
-   APP LAYOUT - Authenticated pages layout
-   Route Group: (app)
-   ============================================ */
+import { AppShell } from "@/components/layout/AppShell";
+import { MockProvider } from "@/providers/mock-provider";
 
-import type { ReactNode } from 'react'
-import { DashboardLayout } from '@/components/layout/DashboardLayout'
-
-interface AppLayoutProps {
-  children: ReactNode
-}
-
-export default function AppLayout({ children }: AppLayoutProps) {
-  return <DashboardLayout>{children}</DashboardLayout>
+export default function AppGroupLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <MockProvider>
+      <AppShell>{children}</AppShell>
+    </MockProvider>
+  );
 }

@@ -12,25 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // MSW's generated service worker — vendored verbatim, not ours to lint.
+    "public/mockServiceWorker.js",
   ]),
-  {
-    rules: {
-      // Correctness rules stay as errors (rules-of-hooks etc. come from the presets).
-      // Legacy-debt rules are downgraded to warnings so CI stays green while the
-      // codebase is cleaned up incrementally — new code should not add warnings.
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unused-vars": [
-        "warn",
-        { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrorsIgnorePattern: "^_" },
-      ],
-      "@typescript-eslint/no-require-imports": "warn",
-      "@typescript-eslint/no-empty-object-type": "warn",
-      "react/no-unescaped-entities": "off",
-      "react/display-name": "warn",
-      "react-hooks/set-state-in-effect": "warn",
-      "@next/next/no-img-element": "warn",
-    },
-  },
 ]);
 
 export default eslintConfig;

@@ -1,45 +1,17 @@
-import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono, Inter } from "next/font/google";
-import {
-  ThemeProvider,
-  ReactQueryProvider,
-  AuthProvider,
-  ToastProvider,
-} from "@/providers";
+import type { Metadata } from "next";
+// Self-hosted Geist fonts (bundled woff2 via next/font/local under the hood).
+// Deliberately NOT next/font/google: that fetches from Google Fonts at build
+// time, which fails in the offline Docker builder. These need no network.
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
 export const metadata: Metadata = {
-  title: {
-    default: "XuPay - Admin Dashboard",
-    template: "%s | XuPay",
-  },
-  description: "XuPay FinTech Admin Dashboard - Manage users, wallets, transactions, and compliance",
-  keywords: ["fintech", "payment", "wallet", "admin", "dashboard"],
-};
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#4F46E5" },
-    { media: "(prefers-color-scheme: dark)", color: "#6366F1" },
-  ],
+  title: "XuPay — Digital Wallet & Payments",
+  description:
+    "Ledger-accurate fintech platform: wallets, transfers, fraud detection, and compliance — built on Next.js 16 and Spring Boot.",
 };
 
 export default function RootLayout({
@@ -48,19 +20,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body
-        className={`${inter.variable} ${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
-      >
-        <ThemeProvider defaultTheme="system">
-          <ReactQueryProvider>
-            <AuthProvider>
-              <ToastProvider>
-                {children}
-              </ToastProvider>
-            </AuthProvider>
-          </ReactQueryProvider>
-        </ThemeProvider>
+    <html
+      lang="en"
+      className={`dark ${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
+    >
+      <body className="flex min-h-full flex-col bg-background text-foreground">
+        <QueryProvider>
+          {children}
+          <Toaster position="top-right" />
+        </QueryProvider>
       </body>
     </html>
   );

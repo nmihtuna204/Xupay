@@ -1,64 +1,36 @@
-# XuPay Frontend
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Next.js 16 (App Router) frontend for the XuPay e-wallet platform.
+## Getting Started
 
-## Stack
-
-- **Next.js 16 / React 19 / TypeScript 5** — App Router, React Compiler enabled
-- **TanStack Query 5** — server state, caching, optimistic updates
-- **Zustand** — lightweight client state
-- **Tailwind CSS 4 + Radix UI** — styling & accessible primitives
-- **Recharts** — dashboard charts
-- **Vitest + Testing Library + MSW** — 457 tests
-
-## Architecture (layers)
-
-```
-app/            Pages (App Router) — (auth): login/register, (app): dashboard, wallets, ...
-components/     Presentational + feature components (tests colocated in __tests__/)
-hooks/api/      TanStack Query hooks per domain (useWallets, useTransactions, ...)
-lib/            Typed API clients: userServiceClient, paymentServiceClient
-                + mock clients (in-memory) and DTO adapters
-providers/      AuthProvider (JWT), ReactQueryProvider, ThemeProvider
-types/          Shared TypeScript DTO/domain types
-```
-
-Data flows one way: **page → hook → client → REST API**. Components never call axios directly.
-
-### Page status
-
-| Page | Data source |
-|---|---|
-| `/login`, `/register` | **Live API** (User Service) |
-| `/wallets` | **Live API** — create wallet, real ledger balance, deposit/withdraw, P2P transfer, live history |
-| `/profile` | **Live API** (User Service profile) |
-| `/dashboard`, `/transactions`, `/analytics`, `/fraud-*`, `/compliance/*` | UI showcase with mock data (visual demo of the design system) |
-
-## Run
+First, run the development server:
 
 ```bash
-npm ci
-
-# Against the real backend (start docker compose first)
-npm run dev                              # http://localhost:3000
-
-# Without any backend (in-memory mocks)
-NEXT_PUBLIC_USE_MOCKS=true npm run dev
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-### Environment variables
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_USER_SERVICE_URL` | `http://localhost:8081` | User Service base URL |
-| `NEXT_PUBLIC_PAYMENT_SERVICE_URL` | `http://localhost:8082` | Payment Service base URL |
-| `NEXT_PUBLIC_USE_MOCKS` | `false` | `true` = use in-memory mock clients |
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Test & build
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-```bash
-npm test          # Vitest (watch)
-npx vitest run    # single pass
-npm run lint
-npm run build     # production build (standalone output)
-```
+## Learn More
+
+To learn more about Next.js, take a look at the following resources:
+
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

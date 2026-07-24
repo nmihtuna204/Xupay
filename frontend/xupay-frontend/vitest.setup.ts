@@ -1,75 +1,50 @@
-import '@testing-library/jest-dom'
-import { vi } from 'vitest'
+import "@testing-library/jest-dom/vitest";
+import { createElement } from "react";
+import { afterAll, afterEach, beforeAll, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import { server } from "@/mocks/server";
 
-// Mock Next.js navigation
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn(() => ({
-    push: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  })),
-  usePathname: vi.fn(() => '/'),
-  useSearchParams: vi.fn(() => new URLSearchParams()),
-  useParams: vi.fn(() => ({})),
-  redirect: vi.fn(),
-  notFound: vi.fn(),
-}))
+// --- MSW lifecycle ---------------------------------------------------------
+// The showcase-domain handlers are always registered (src/mocks/server.ts);
+// individual tests add real-API-domain handlers via server.use(...).
+beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
+afterEach(() => {
+  cleanup();
+  server.resetHandlers();
+});
+afterAll(() => server.close());
 
-// Mock next/headers
-vi.mock('next/headers', () => ({
-  headers: vi.fn(() => new Map()),
-  cookies: vi.fn(() => ({
-    get: vi.fn(),
-    getAll: vi.fn(),
-    has: vi.fn(),
-    set: vi.fn(),
-    delete: vi.fn(),
-    clear: vi.fn(),
-  })),
-}))
+// --- jsdom polyfills --------------------------------------------------------
+// Recharts' ResponsiveContainer relies on ResizeObserver, absent in jsdom.
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal("ResizeObserver", ResizeObserverMock);
 
-// Mock next/image — must return a real React element, not a plain object
-vi.mock('next/image', async () => {
-  const React = await import('react')
-  return {
-    default: ({ src, alt, width, height, className }: any) =>
-      React.createElement('img', { src, alt, width, height, className }),
-  }
-})
-
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+// matchMedia is read by theme/media-query code paths.
+Object.defineProperty(window, "matchMedia", {
   writable: true,
-  value: vi.fn().mockImplementation((query) => ({
+  value: (query: string) => ({
     matches: false,
     media: query,
     onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-})
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }),
+});
 
-// Mock IntersectionObserver
-class MockIntersectionObserver {
-  constructor() {}
-  observe() {
-    return null
-  }
-  unobserve() {
-    return null
-  }
-  disconnect() {
-    return null
-  }
-}
-
-global.IntersectionObserver = MockIntersectionObserver as any
-
-// Use the real @testing-library/user-event when available to simulate DOM interactions
-// Fallbacks could be provided here if needed in constrained environments
-vi.mock('@testing-library/user-event', async () => await vi.importActual('@testing-library/user-event'))
+// jsdom has no layout, so Recharts' ResponsiveContainer measures 0×0 and
+// renders nothing. Give it a fixed size so charts mount and their SVG exists.
+vi.mock("recharts", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("recharts")>();
+  return {
+    ...actual,
+    ResponsiveContainer: ({ children }: { children: React.ReactNode }) =>
+      createElement("div", { style: { width: 800, height: 400 } }, children),
+  };
+});

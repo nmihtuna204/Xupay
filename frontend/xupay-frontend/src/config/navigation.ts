@@ -1,138 +1,65 @@
-/* ============================================
-   NAVIGATION CONFIG - Sidebar navigation items
-   Layer 6: Configuration
-   ============================================ */
-
 import {
   LayoutDashboard,
-  Users,
   Wallet,
   ArrowLeftRight,
+  Users,
+  ShieldCheck,
   ShieldAlert,
-  Settings,
+  FileWarning,
   BarChart3,
-  FileText,
-  Bell,
+  ScrollText,
+  Settings,
   type LucideIcon,
-} from 'lucide-react'
-
-// ============================================
-// TYPES
-// ============================================
+} from "lucide-react";
 
 export interface NavItem {
-  label: string
-  href: string
-  icon: LucideIcon
-  badge?: number
-  children?: NavItem[]
+  label: string;
+  href: string;
+  icon: LucideIcon;
+  /** Not backed by a real backend endpoint — still a full page, just not flagged to the viewer. */
+  mock?: boolean;
 }
 
 export interface NavGroup {
-  label: string
-  items: NavItem[]
+  label: string;
+  items: NavItem[];
 }
-
-// ============================================
-// MAIN NAVIGATION
-// ============================================
 
 export const mainNavigation: NavGroup[] = [
   {
-    label: 'Overview',
+    label: "Overview",
+    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
+  },
+  {
+    label: "Money",
     items: [
-      {
-        label: 'Dashboard',
-        href: '/dashboard',
-        icon: LayoutDashboard,
-      },
-      {
-        label: 'Analytics',
-        href: '/analytics',
-        icon: BarChart3,
-      },
+      { label: "Wallets", href: "/wallets", icon: Wallet },
+      { label: "Transactions", href: "/transactions", icon: ArrowLeftRight },
+      { label: "Contacts", href: "/contacts", icon: Users },
     ],
   },
   {
-    label: 'Management',
+    label: "Trust & Safety",
     items: [
-      {
-        label: 'Users',
-        href: '/users',
-        icon: Users,
-      },
-      {
-        label: 'Wallets',
-        href: '/wallets',
-        icon: Wallet,
-      },
-      {
-        label: 'Transactions',
-        href: '/transactions',
-        icon: ArrowLeftRight,
-      },
+      { label: "KYC Verification", href: "/kyc", icon: ShieldCheck },
+      { label: "Fraud Detection", href: "/fraud", icon: ShieldAlert, mock: true },
+      { label: "Compliance / SAR", href: "/compliance", icon: FileWarning, mock: true },
     ],
   },
   {
-    label: 'Compliance',
+    label: "Insights",
     items: [
-      {
-        label: 'SAR Reports',
-        href: '/sars',
-        icon: ShieldAlert,
-      },
-      {
-        label: 'Audit Log',
-        href: '/audit',
-        icon: FileText,
-      },
+      { label: "Analytics", href: "/analytics", icon: BarChart3, mock: true },
+      { label: "Audit Log", href: "/audit", icon: ScrollText, mock: true },
     ],
   },
-]
-
-// ============================================
-// USER MENU ITEMS
-// ============================================
+];
 
 export const userMenuItems: NavItem[] = [
-  {
-    label: 'Notifications',
-    href: '/notifications',
-    icon: Bell,
-  },
-  {
-    label: 'Settings',
-    href: '/settings',
-    icon: Settings,
-  },
-]
+  { label: "Settings", href: "/settings", icon: Settings },
+];
 
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
-/**
- * Find the active nav item based on current pathname
- */
-export function findActiveNavItem(pathname: string): NavItem | undefined {
-  for (const group of mainNavigation) {
-    for (const item of group.items) {
-      if (pathname.startsWith(item.href)) {
-        return item
-      }
-    }
-  }
-  return undefined
-}
-
-/**
- * Check if a nav item is active
- */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
-  // Exact match for dashboard
-  if (item.href === '/dashboard') {
-    return pathname === '/dashboard'
-  }
-  // Prefix match for other routes
-  return pathname.startsWith(item.href)
+  if (item.href === "/dashboard") return pathname === "/dashboard";
+  return pathname.startsWith(item.href);
 }

@@ -1,47 +1,43 @@
-/* ============================================
-   TEST UTILS - Shared render helpers for tests
-   Wraps components in the providers the app
-   provides at runtime (React Query + Auth).
-   ============================================ */
+import { type ReactElement, type ReactNode } from "react";
+import { render, type RenderOptions } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { setSession } from "@/lib/session";
+import type { UserResponse } from "@/lib/api/user-service/auth";
 
-import React, { type ReactElement, type ReactNode } from 'react'
-import { render, type RenderOptions } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { AuthProvider } from '@/providers/AuthProvider'
-
-/**
- * Create a fresh QueryClient per test to avoid cache leaking between tests.
- * Retries are disabled so failing queries reject immediately.
- */
-export function createTestQueryClient(): QueryClient {
+/** A QueryClient with retries off and caching disabled for deterministic tests. */
+export function makeTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: 0, staleTime: 0 },
       mutations: { retry: false },
     },
-  })
+  });
 }
 
-interface ProvidersProps {
-  children: ReactNode
+export function renderWithProviders(
+  ui: ReactElement,
+  options?: Omit<RenderOptions, "wrapper"> & { queryClient?: QueryClient }
+) {
+  const queryClient = options?.queryClient ?? makeTestQueryClient();
+  function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  }
+  return { queryClient, ...render(ui, { wrapper: Wrapper, ...options }) };
 }
 
-function AllProviders({ children }: ProvidersProps) {
-  const queryClient = createTestQueryClient()
-  return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
-    </QueryClientProvider>
-  )
-}
+export const TEST_USER: UserResponse = {
+  id: "11111111-1111-1111-1111-111111111111",
+  email: "test@example.com",
+  firstName: "Test",
+  lastName: "User",
+  phone: "+84901234567",
+  kycStatus: "APPROVED",
+  kycTier: "TIER_2",
+  isActive: true,
+  createdAt: "2026-01-01T00:00:00.000Z",
+};
 
-/**
- * Render a component wrapped in QueryClientProvider + AuthProvider.
- * Use for components that call useAuth() or React Query hooks
- * (Topbar, Sidebar, UserMenu, dashboard pages, ...).
- */
-export function renderWithProviders(ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) {
-  return render(ui, { wrapper: AllProviders, ...options })
+/** Writes a token so `getToken()` is truthy and auth-gated queries fire. */
+export function seedAuthToken() {
+  setSession("test-jwt-token");
 }
-
-export * from '@testing-library/react'

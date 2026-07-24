@@ -1,99 +1,59 @@
-/* ============================================
-   SIDEBAR - Main navigation sidebar
-   Layer 6: Layout Component
-   ============================================ */
+"use client";
 
-'use client'
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { Wallet } from "lucide-react";
+import { mainNavigation, isNavItemActive } from "@/config/navigation";
+import { cn } from "@/lib/utils";
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { mainNavigation } from '@/config/navigation'
-import { NavGroup } from './NavGroup'
-import { cn } from '@/lib/cn'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
-
-// ============================================
-// LOGO COMPONENT
-// ============================================
-
-interface LogoProps {
-  collapsed?: boolean
-}
-
-function Logo({ collapsed }: LogoProps) {
-  return (
-    <Link
-      href="/dashboard"
-      className="flex items-center gap-3 px-4 py-4 transition-colors hover:opacity-80"
-    >
-      {/* Logo Icon */}
-      <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-xupay-primary to-xupay-secondary">
-        <span className="text-white font-bold text-sm">X</span>
-      </div>
-      
-      {/* Logo Text */}
-      {!collapsed && (
-        <span className="text-xl font-bold bg-gradient-to-r from-xupay-primary to-xupay-secondary bg-clip-text text-transparent">
-          XuPay
-        </span>
-      )}
-    </Link>
-  )
-}
-
-// ============================================
-// SIDEBAR COMPONENT
-// ============================================
-
-interface SidebarProps {
-  className?: string
-}
-
-export function Sidebar({ className }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false)
+export function Sidebar({ className }: { className?: string }) {
+  const pathname = usePathname();
 
   return (
-    <aside
+    <nav
       className={cn(
-        'flex flex-col h-full border-r border-border/60 transition-all duration-300',
-        'bg-card supports-[backdrop-filter]:bg-card/80 backdrop-blur',
-        collapsed ? 'w-16' : 'w-64',
+        "flex h-full w-64 flex-col border-r border-sidebar-border bg-sidebar px-3 py-4",
         className
       )}
     >
-      {/* Logo */}
-      <div className="flex-shrink-0 border-b border-border/60">
-        <Logo collapsed={collapsed} />
-      </div>
+      <Link href="/dashboard" className="flex items-center gap-2 px-2 py-2">
+        <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent-from to-accent-to">
+          <Wallet className="size-4 text-white" />
+        </span>
+        <span className="text-lg font-semibold tracking-tight">XuPay</span>
+      </Link>
 
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto py-4 px-2 space-y-6">
+      <div className="mt-6 flex flex-1 flex-col gap-5 overflow-y-auto">
         {mainNavigation.map((group) => (
-          <NavGroup key={group.label} group={group} collapsed={collapsed} />
+          <div key={group.label}>
+            <p className="px-3 pb-1.5 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              {group.label}
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {group.items.map((item) => {
+                const active = isNavItemActive(item, pathname);
+                const Icon = item.icon;
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      data-active={active}
+                      className={cn(
+                        "flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground",
+                        active &&
+                          "bg-sidebar-accent text-sidebar-foreground"
+                      )}
+                    >
+                      <Icon className="size-4 shrink-0" />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         ))}
       </div>
-
-      {/* Collapse Toggle */}
-      <div className="flex-shrink-0 p-2 border-t border-border/60">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className={cn(
-            'flex items-center justify-center w-full px-3 py-2 rounded-xl',
-            'text-muted-foreground hover:text-foreground hover:bg-muted/40',
-            'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
-          )}
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? (
-            <ChevronRight className="w-5 h-5" />
-          ) : (
-            <>
-              <ChevronLeft className="w-5 h-5 mr-2" />
-              <span className="text-sm">Collapse</span>
-            </>
-          )}
-        </button>
-      </div>
-    </aside>
-  )
+    </nav>
+  );
 }
