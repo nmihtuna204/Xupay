@@ -63,7 +63,7 @@ export function ProfileForm({ profile }: { profile: ProfileResponse }) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="glass-card flex flex-col gap-4 p-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="panel flex flex-col gap-4 p-6">
         <div className="grid grid-cols-2 gap-3">
           <FormField
             control={form.control}

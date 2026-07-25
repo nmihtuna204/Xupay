@@ -45,7 +45,7 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
   }
 
   return (
-    <div className="glass-card p-8 sm:p-10">
+    <div className="panel p-8 sm:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="kicker">Personal wallet</p>

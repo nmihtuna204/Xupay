@@ -1,18 +1,16 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeaderSkeleton, TableSkeleton } from "@/components/common/Skeletons";
 
+/**
+ * Route-transition fallback for the whole app group. Intentionally generic
+ * (header plus one content block): it only shows during navigation, before the
+ * segment knows which page it is. Per-query skeletons inside each page carry
+ * the specific shape.
+ */
 export default function AppLoading() {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Skeleton className="h-7 w-48" />
-        <Skeleton className="h-4 w-72" />
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-28 rounded-2xl" />
-        ))}
-      </div>
-      <Skeleton className="h-72 rounded-2xl" />
+    <div className="page-stack">
+      <PageHeaderSkeleton />
+      <TableSkeleton />
     </div>
   );
 }

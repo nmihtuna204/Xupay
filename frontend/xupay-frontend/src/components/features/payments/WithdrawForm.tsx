@@ -52,7 +52,7 @@ export function WithdrawForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="glass-card flex max-w-lg flex-col gap-5 p-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="panel flex max-w-lg flex-col gap-5 p-6">
         <FormField
           control={form.control}
           name="amount"

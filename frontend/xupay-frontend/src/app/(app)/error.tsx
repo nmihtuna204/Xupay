@@ -1,19 +1,25 @@
 "use client";
 
 import { useEffect } from "react";
-import { RotateCcw } from "lucide-react";
+import Link from "next/link";
+import { RotateCcw, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /**
- * Error boundary for the authenticated app group. Catches render/data errors
- * in any (app) page so a single failing query never blanks the whole shell.
+ * Error boundary for the authenticated app group. Catches render/data errors in
+ * any (app) page so a single failing query never blanks the whole shell.
+ *
+ * Uses `unstable_retry` rather than `reset`. `reset` only clears the error state
+ * and re-renders the same children without re-fetching, so a failed request
+ * simply fails again and the button looks broken. `unstable_retry` re-fetches
+ * the segment, which is what a "Try again" button has to mean.
  */
 export default function AppError({
   error,
-  reset,
+  unstable_retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  unstable_retry: () => void;
 }) {
   useEffect(() => {
     // In a real deployment this would go to Sentry/Datadog.
@@ -21,15 +27,28 @@ export default function AppError({
   }, [error]);
 
   return (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
-      <h1 className="text-xl font-semibold">Something went wrong</h1>
-      <p className="max-w-sm text-sm text-muted-foreground">
-        We hit an unexpected error loading this page. You can try again — if it keeps happening,
-        please come back in a moment.
+    <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
+      <div className="flex size-10 items-center justify-center rounded-full bg-error/10">
+        <TriangleAlert className="size-[18px] text-error" />
+      </div>
+      <h1 className="mt-4 text-base font-semibold">Something went wrong</h1>
+      <p className="mt-1.5 max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
+        We could not load this page. Retrying will fetch it again. If it keeps
+        failing, the service may be briefly unavailable.
       </p>
-      <Button onClick={reset} className="mt-2">
-        <RotateCcw /> Try again
-      </Button>
+      {error.digest && (
+        <p className="mt-3 font-mono text-xs text-muted-foreground/60">
+          Reference {error.digest}
+        </p>
+      )}
+      <div className="mt-6 flex items-center gap-2">
+        <Button onClick={() => unstable_retry()}>
+          <RotateCcw /> Try again
+        </Button>
+        <Button variant="outline" asChild>
+          <Link href="/dashboard">Back to dashboard</Link>
+        </Button>
+      </div>
     </div>
   );
 }

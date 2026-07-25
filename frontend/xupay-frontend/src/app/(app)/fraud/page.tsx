@@ -128,7 +128,7 @@ export default function FraudPage() {
         </ChartCard>
       </div>
 
-      <div className="mt-6 glass-card p-5">
+      <div className="mt-6 panel p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold">Recent alerts</h3>
           <div className="inline-flex rounded-lg border border-border p-0.5">

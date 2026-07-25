@@ -29,7 +29,7 @@ export function TransactionsClient() {
   return (
     <>
       <PageHeader title="Transactions" description="Every transfer, deposit, and withdrawal on your wallet." />
-      <div className="glass-card p-6">
+      <div className="panel p-6">
         {transactionsQuery.isLoading ? (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (

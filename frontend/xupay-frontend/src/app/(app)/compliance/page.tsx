@@ -48,7 +48,7 @@ export default function CompliancePage() {
         description="Suspicious Activity Reports filed by the compliance team."
       />
 
-      <div className="glass-card p-5">
+      <div className="panel p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex flex-wrap rounded-lg border border-border p-0.5">
             {STATUS_FILTERS.map((f) => (

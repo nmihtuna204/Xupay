@@ -32,7 +32,7 @@ export function LedgerPanel() {
   const active = useInView(ref, { once: true, amount: 0.4 });
 
   return (
-    <div ref={ref} className="glass-card p-7 sm:p-8">
+    <div ref={ref} className="panel p-7 sm:p-8">
       <p className="kicker">Balance</p>
       <p className="figure-lg mt-3 text-[clamp(1.875rem,4.5vw,2.75rem)] leading-none">
         <NumberFlow

@@ -5,7 +5,7 @@ import type { WalletBalanceResponse } from "@/lib/api/payment-service/wallets";
 
 export function WalletCard({ wallet }: { wallet: WalletBalanceResponse }) {
   return (
-    <div className="glass-card p-8 sm:p-10">
+    <div className="panel p-8 sm:p-10">
       <div className="flex items-start justify-between">
         <p className="kicker">Wallet balance</p>
         {wallet.isFrozen && (

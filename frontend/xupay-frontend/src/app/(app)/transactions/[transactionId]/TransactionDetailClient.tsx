@@ -34,7 +34,7 @@ export function TransactionDetailClient({ transactionId }: { transactionId: stri
   return (
     <>
       <PageHeader title="Transaction details" />
-      <div className="glass-card max-w-2xl p-6">
+      <div className="panel max-w-2xl p-6">
         <div className="flex items-start justify-between">
           <p className="figure-lg text-3xl">{formatCurrencyFromCents(tx.amountCents, tx.currency)}</p>
           <TransactionStatusBadge status={tx.status} />

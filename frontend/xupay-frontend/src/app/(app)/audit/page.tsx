@@ -54,7 +54,7 @@ export default function AuditLogPage() {
         description="Immutable record of every action across the platform."
       />
 
-      <div className="glass-card p-5">
+      <div className="panel p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="inline-flex flex-wrap rounded-lg border border-border p-0.5">
             {CATEGORY_FILTERS.map((f) => (

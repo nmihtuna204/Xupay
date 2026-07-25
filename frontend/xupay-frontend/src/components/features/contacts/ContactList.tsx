@@ -25,7 +25,7 @@ export function ContactList({ contacts }: { contacts: ContactResponse[] }) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
       {contacts.map((contact) => (
-        <div key={contact.id} className="glass-card flex items-center justify-between p-5">
+        <div key={contact.id} className="panel flex items-center justify-between p-5">
           <div className="flex items-center gap-3">
             <Avatar>
               <AvatarFallback className="bg-secondary text-xs font-medium text-foreground">

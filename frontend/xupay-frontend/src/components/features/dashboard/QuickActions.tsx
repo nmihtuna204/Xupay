@@ -14,7 +14,7 @@ export function QuickActions() {
         <Link
           key={action.href}
           href={action.href}
-          className="group glass-card flex items-center justify-between px-5 py-4 transition-colors hover:bg-surface-hover"
+          className="group panel flex items-center justify-between px-5 py-4 transition-colors hover:bg-surface-hover"
         >
           <span className="flex items-center gap-3">
             <action.icon className="size-4 text-muted-foreground" />

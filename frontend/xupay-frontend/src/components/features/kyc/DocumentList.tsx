@@ -25,7 +25,7 @@ export function DocumentList({ documents }: { documents: KycDocumentResponse[] }
   return (
     <div className="flex flex-col gap-2">
       {documents.map((doc) => (
-        <div key={doc.id} className="glass-card flex items-center justify-between p-4">
+        <div key={doc.id} className="panel flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-surface-hover">
               <FileText className="size-4 text-muted-foreground" />

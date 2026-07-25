@@ -4,7 +4,7 @@ import { formatCurrencyFromCents } from "@/lib/format";
 /**
  * A real mini preview of the XuPay wallet card. To earn that description it
  * has to match the live dashboard rather than approximate it, so it uses the
- * same surface (.glass-card, like WalletCard), the same money formatter
+ * same surface (.panel, like WalletCard), the same money formatter
  * (formatCurrencyFromCents, so amounts carry the symbol and both decimals),
  * and the same row treatment as TransactionTable (font-mono tabular-nums).
  *
@@ -29,7 +29,7 @@ export function HeroBalanceCard() {
         aria-hidden
         className="pointer-events-none absolute -inset-8 -z-10 rounded-[2rem] bg-[radial-gradient(60%_60%_at_60%_30%,color-mix(in_oklab,var(--accent-from)_28%,transparent),transparent_70%)] blur-2xl"
       />
-      <div className="glass-card w-[min(88vw,26rem)] p-8 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)]">
+      <div className="panel w-[min(88vw,26rem)] p-8 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)]">
         <p className="kicker">Wallet balance</p>
         {/* Clamped rather than a magic px value. The ceiling is lower than
             WalletCard's 4.5rem because this card is 26rem wide, not a

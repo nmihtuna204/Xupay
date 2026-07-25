@@ -57,7 +57,10 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "transition-colors hover:bg-white/[0.025] has-aria-expanded:bg-white/[0.025] data-[state=selected]:bg-white/[0.04]",
+        // Hairline row divider, not per-cell borders: a grid of boxes reads as
+        // a spreadsheet, a single thin rule reads as a ledger. TableBody clears
+        // it on the last row so the table does not end in a stray line.
+        "border-b border-white/[0.05] transition-colors hover:bg-white/[0.025] has-aria-expanded:bg-white/[0.025] data-[state=selected]:bg-white/[0.04]",
         className
       )}
       {...props}

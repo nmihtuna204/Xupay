@@ -76,7 +76,7 @@ export function KycUploader() {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="glass-card flex max-w-lg flex-col gap-4 p-6"
+        className="panel flex max-w-lg flex-col gap-4 p-6"
       >
         <FormField
           control={form.control}

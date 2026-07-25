@@ -62,7 +62,7 @@ export function TransferForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="glass-card flex max-w-lg flex-col gap-5 p-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="panel flex max-w-lg flex-col gap-5 p-6">
         {contactsQuery.data && contactsQuery.data.length > 0 && (
           <div>
             <p className="mb-2 text-sm font-medium">Send to a contact</p>
