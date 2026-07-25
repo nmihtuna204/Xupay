@@ -6,15 +6,28 @@
  * force 2 fraction digits, rather than trusting Intl's per-currency default
  * (which would show 0 decimals for VND and silently misrepresent the value).
  */
+/**
+ * The one money-display shape. Exported so components that cannot call
+ * formatCurrencyFromCents directly (animated figures such as NumberFlow, which
+ * need Intl options rather than a finished string) still render money
+ * identically to the rest of the app instead of drifting.
+ */
+export function moneyFormatOptions(currency = "VND") {
+  // `satisfies` rather than a return annotation: NumberFlow's Format type omits
+  // and re-narrows `notation`, so a widened Intl.NumberFormatOptions would not
+  // be assignable to it. This keeps the inferred shape narrow for both callers.
+  return {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  } satisfies Intl.NumberFormatOptions;
+}
+
 export function formatCurrencyFromCents(amountCents: number, currency = "VND"): string {
   const amount = amountCents / 100;
   try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(amount);
+    return new Intl.NumberFormat("en-US", moneyFormatOptions(currency)).format(amount);
   } catch {
     // Unknown/invalid currency code — fall back to a plain number so the UI
     // never crashes on unexpected backend data.

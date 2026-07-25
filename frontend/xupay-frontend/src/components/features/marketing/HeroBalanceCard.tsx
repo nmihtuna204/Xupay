@@ -1,15 +1,24 @@
 import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { formatCurrencyFromCents } from "@/lib/format";
 
 /**
- * A real mini preview of the XuPay wallet card — same surfaces, type and
- * money formatting as the live dashboard. This is a genuine component
- * preview, not a div-based fake screenshot: it renders the actual visual
- * language of the product so the hero shows what XuPay looks like.
+ * A real mini preview of the XuPay wallet card. To earn that description it
+ * has to match the live dashboard rather than approximate it, so it uses the
+ * same surface (.glass-card, like WalletCard), the same money formatter
+ * (formatCurrencyFromCents, so amounts carry the symbol and both decimals),
+ * and the same row treatment as TransactionTable (font-mono tabular-nums).
+ *
+ * No backdrop blur: globals.css reserves blur for floating overlays, and an
+ * in-page card is a flat surface with a single hairline border.
  */
+
+/** Balances are minor units, exactly as the payment service returns them. */
+const BALANCE_CENTS = 1_184_792_000;
+
 const ROWS = [
-  { label: "Salary deposit", amount: "+2,500,000", up: true },
-  { label: "An Nguyen", amount: "-150,000", up: false },
-  { label: "Coffee", amount: "-52,000", up: false },
+  { label: "Salary deposit", amountCents: 250_000_000 },
+  { label: "An Nguyen", amountCents: -15_000_000 },
+  { label: "Coffee", amountCents: -5_200_000 },
 ];
 
 export function HeroBalanceCard() {
@@ -20,36 +29,44 @@ export function HeroBalanceCard() {
         aria-hidden
         className="pointer-events-none absolute -inset-8 -z-10 rounded-[2rem] bg-[radial-gradient(60%_60%_at_60%_30%,color-mix(in_oklab,var(--accent-from)_28%,transparent),transparent_70%)] blur-2xl"
       />
-      <div className="w-[min(88vw,26rem)] rounded-2xl border border-white/[0.08] bg-surface-2/80 p-7 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+      <div className="glass-card w-[min(88vw,26rem)] p-8 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.7)]">
         <p className="kicker">Wallet balance</p>
-        <p className="figure-lg mt-3 text-[2.75rem] leading-none">₫11,847,920</p>
+        {/* Clamped rather than a magic px value. The ceiling is lower than
+            WalletCard's 4.5rem because this card is 26rem wide, not a
+            full dashboard column, and the 2-decimal string is 14 glyphs. */}
+        <p className="figure-lg mt-4 text-[clamp(1.75rem,4.5vw,2.5rem)] leading-none">
+          {formatCurrencyFromCents(BALANCE_CENTS)}
+        </p>
 
         <div className="mt-7 flex flex-col divide-y divide-white/[0.06]">
-          {ROWS.map((row) => (
-            <div key={row.label} className="flex items-center justify-between py-3">
-              <span className="flex items-center gap-2.5 text-sm text-foreground/80">
+          {ROWS.map((row) => {
+            const credit = row.amountCents > 0;
+            return (
+              <div key={row.label} className="flex items-center justify-between gap-3 py-3">
+                <span className="flex items-center gap-2.5 text-sm text-foreground/80">
+                  <span
+                    className={`flex size-7 shrink-0 items-center justify-center rounded-full ${
+                      credit ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
+                    }`}
+                  >
+                    {credit ? (
+                      <ArrowDownLeft className="size-3.5" />
+                    ) : (
+                      <ArrowUpRight className="size-3.5" />
+                    )}
+                  </span>
+                  {row.label}
+                </span>
                 <span
-                  className={`flex size-7 items-center justify-center rounded-full ${
-                    row.up ? "bg-success/10 text-success" : "bg-white/[0.05] text-muted-foreground"
+                  className={`font-mono text-sm tabular-nums ${
+                    credit ? "text-success" : "text-foreground/80"
                   }`}
                 >
-                  {row.up ? (
-                    <ArrowDownLeft className="size-3.5" />
-                  ) : (
-                    <ArrowUpRight className="size-3.5" />
-                  )}
+                  {formatCurrencyFromCents(row.amountCents)}
                 </span>
-                {row.label}
-              </span>
-              <span
-                className={`font-mono text-sm tabular-nums ${
-                  row.up ? "text-success" : "text-foreground/80"
-                }`}
-              >
-                {row.amount}
-              </span>
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
