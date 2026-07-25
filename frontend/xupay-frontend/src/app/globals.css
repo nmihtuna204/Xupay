@@ -219,6 +219,20 @@
     background-size: 64px 64px;
   }
 
+  /*
+   * Concentric hairline rings. The closing section used .bg-grid, the same
+   * orthogonal device as the hero, which made the two ends of the page read as
+   * one repeated layout family. Rings are a different geometric language and
+   * they converge on the accent orb, which suits a closing call to action.
+   */
+  .bg-rings {
+    background-image: repeating-radial-gradient(
+      circle at 50% 50%,
+      var(--grid-line) 0 1px,
+      transparent 1px 88px
+    );
+  }
+
   /* Layered mesh-gradient glow — the ONE gradient on the app, hero only.
      Two soft accent radials over the base, never a flat fill. */
   .bg-mesh {

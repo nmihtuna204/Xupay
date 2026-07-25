@@ -28,7 +28,6 @@ function HeroSection() {
   return (
     <section className="section-full bg-mesh relative snap-start overflow-hidden">
       <div aria-hidden className="bg-grid pointer-events-none absolute inset-0 -z-10 opacity-60" />
-      <div aria-hidden className="noise-overlay pointer-events-none absolute inset-0 -z-10 opacity-[0.12]" />
 
       <div className="mx-auto grid w-full max-w-[1200px] items-center gap-12 px-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
         <div>
@@ -71,8 +70,15 @@ function HeroSection() {
 function LedgerSection() {
   return (
     <section className="section-full snap-start">
-      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-14 px-6 lg:grid-cols-[55fr_45fr]">
-        <div>
+      {/*
+        Mirrored against the hero: asset left, copy right. The hero is already
+        copy-left/asset-right, and two consecutive splits leaning the same way
+        is the zigzag that makes a page feel templated. DOM order stays
+        copy-then-asset so the reading and tab order are unchanged on mobile;
+        only the desktop columns swap.
+      */}
+      <div className="mx-auto grid w-full max-w-[1200px] items-center gap-14 px-6 lg:grid-cols-[45fr_55fr]">
+        <div className="lg:order-2">
           <Reveal as="h2" className="display text-4xl sm:text-6xl">
             Balanced to the cent.
           </Reveal>
@@ -85,7 +91,7 @@ function LedgerSection() {
             withdrawals reconcile exactly. No drift, no duplicates.
           </Reveal>
         </div>
-        <Reveal delay={120}>
+        <Reveal delay={120} className="lg:order-1">
           <LedgerPanel />
         </Reveal>
       </div>
@@ -111,17 +117,25 @@ function FraudSection() {
           Every transaction is scored the instant it happens, then allowed, held for review, or
           blocked before the money moves.
         </Reveal>
+        {/*
+          Illustrative figures, not measured production numbers. Labelled as
+          such rather than dropped: unlabelled specifics on a marketing page
+          read as real claims, which is a promise the project has not measured.
+        */}
         <Reveal as="div" delay={200} className="mt-16 flex items-end justify-center gap-16">
           <div>
             <p className="figure-lg text-[clamp(3rem,7vw,5rem)] leading-none text-primary-accent">
               &lt;40ms
             </p>
-            <p className="mt-3 text-sm text-muted-foreground">Median scoring latency</p>
+            <p className="mt-3 text-sm text-muted-foreground">Target scoring latency</p>
           </div>
           <div className="hidden sm:block">
             <p className="figure-lg text-[clamp(3rem,7vw,5rem)] leading-none">18.4K</p>
-            <p className="mt-3 text-sm text-muted-foreground">Evaluated per day</p>
+            <p className="mt-3 text-sm text-muted-foreground">Sample daily volume</p>
           </div>
+        </Reveal>
+        <Reveal as="p" delay={260} className="mt-10 text-xs text-muted-foreground/70">
+          Figures are illustrative of the scoring pipeline, not measured service levels.
         </Reveal>
       </div>
     </section>
@@ -170,7 +184,7 @@ function ComplianceSection() {
 
 function ClosingSection() {
   return (
-    <section className="section-full bg-grid relative snap-start items-center overflow-hidden">
+    <section className="section-full bg-rings relative snap-start items-center overflow-hidden">
       {/* Soft convergent orb for geometric depth. */}
       <div
         aria-hidden

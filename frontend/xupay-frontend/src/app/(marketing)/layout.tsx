@@ -3,7 +3,19 @@ import Link from "next/link";
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-svh bg-background">
-      {/* Thin, transparent overlay header — floats over the cinematic sections. */}
+      {/*
+        Film grain. Lives here as a single fixed layer rather than inside the
+        hero: an absolutely-positioned noise tile inside the scrolling <main>
+        repaints on every scroll frame, which is the one thing a grain overlay
+        must not do. Fixed and pointer-events-none, so it composites once and
+        never intercepts input.
+      */}
+      <div
+        aria-hidden
+        className="noise-overlay pointer-events-none fixed inset-0 z-[60] opacity-[0.05]"
+      />
+
+      {/* Thin, transparent overlay header - floats over the cinematic sections. */}
       <header className="fixed inset-x-0 top-0 z-50">
         <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
           <Link href="/" className="text-sm font-semibold tracking-tight">
