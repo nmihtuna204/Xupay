@@ -18,7 +18,7 @@ export default function SettingsPage() {
         <div>
           <h2 className="mb-3 font-medium">Profile</h2>
           {profileQuery.isLoading ? (
-            <Skeleton className="h-96 rounded-2xl" />
+            <Skeleton className="h-96 rounded-xl" />
           ) : profileQuery.data ? (
             <ProfileForm profile={profileQuery.data} />
           ) : null}
@@ -26,7 +26,7 @@ export default function SettingsPage() {
         <div>
           <h2 className="mb-3 font-medium">Limits</h2>
           {limitsQuery.isLoading ? (
-            <Skeleton className="h-72 rounded-2xl" />
+            <Skeleton className="h-72 rounded-xl" />
           ) : limitsQuery.data ? (
             <LimitsCard limits={limitsQuery.data} />
           ) : null}

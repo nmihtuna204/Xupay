@@ -35,7 +35,7 @@ Giao diện chia làm **hai nhóm rõ ràng**:
 | State (client) | **Zustand** | v5 | Session flag đồng bộ |
 | Charts | **Recharts** | v3 | Biểu đồ trang showcase |
 | Mocking | **MSW** | v2 | Mock 4 domain showcase |
-| Icons | **lucide-react** | — | Bộ icon |
+| Icons | **@phosphor-icons/react** | v2 | Bộ icon (`weight="light"`, import từ `/dist/ssr`) |
 | Toast | **sonner** | — | Thông báo |
 | Fonts | **Geist Sans / Geist Mono** | local (gói `geist`) | Không phụ thuộc mạng |
 | Testing | **Vitest** + Testing Library + **jsdom** | — | 29 test |
@@ -80,32 +80,59 @@ Next.js 16 đổi tên `middleware.ts` → **`proxy.ts`** (hàm export tên `pro
 ## 4. Hệ thống thiết kế (Design System)
 
 ### Phong cách
-Giao diện **dark-first**, hiện đại kiểu fintech cao cấp: nền xanh-đen sâu, thẻ **glassmorphism** (kính mờ), điểm nhấn gradient xanh dương → cyan, số tiền dùng **font mono tabular** để không bị "nhảy" khi cập nhật.
+Giao diện **light-first "Agio pastel"**: nền near-white được nâng bởi một lớp mesh pastel rất nhẹ (hồng → lavender → mint), thẻ kính nổi, và gradient thương hiệu tím → xanh → mint. Chiều sâu đến từ độ trong và shadow nhuốm màu, **không** từ viền dày hay shadow đen. Số tiền dùng **font mono tabular** để không bị "nhảy" khi cập nhật.
+
+Theme sáng là mặc định, do `next-themes` điều khiển (`attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`). Bộ token tối trước đây được **giữ lại dưới `.dark`** nhưng **chưa audit lại** sau khi lật sáng — coi như đang tạm gác, chưa ship.
+
+### Quy tắc giữ hệ thống này đứng vững (quan trọng nhất)
+Một dải pastel **không thể** vừa làm chữ, vừa làm nền nút, vừa làm trang trí: mint `#5ce0c0` chỉ đạt **1.58:1** trên nền near-white. Vì vậy gradient thương hiệu tồn tại ở **ba dải đã hiệu chỉnh, không thay thế cho nhau được**:
+
+| Nhóm token | Dải màu | Ràng buộc |
+|---|---|---|
+| `--grad-deco-*` | Toàn dải pastel, có mint | Chỉ trang trí: mesh, glow, tint. **Không bao giờ mang chữ.** |
+| `--grad-text-*` | `#7c5cff → #3d7de8 → #1f9d8f` | Chỉ cho **display type** (≥24px, chuẩn 3:1). Đo được 4.20 / 3.83 / 3.24. |
+| `--grad-fill-*` | `#6b4aef → #4936d8` | Gradient **duy nhất** được đặt dưới chữ trắng. Đo được 5.45 / 7.49. |
 
 ### Bảng màu (CSS tokens — Tailwind v4 `@theme`)
 
 | Token | Giá trị | Dùng cho |
 |-------|---------|----------|
-| `--background` | `#0a0e1a` | Nền trang |
-| `--surface` / `--card` | `#131826` | Thẻ, panel |
-| `--surface-hover` | `#1a2033` | Hover, filter active |
-| `--primary` | `#3b82f6` | Nút chính, link |
-| `--accent-from → --accent-to` | `#3b82f6 → #06b6d4` | Gradient thương hiệu |
-| `--success / warning / error` | `#10b981 / #f59e0b / #ef4444` | Trạng thái |
-| `--sidebar` | `#0d1220` | Nền thanh bên |
+| `--background` | `#fafbff` | Nền trang (near-white, hơi lạnh) |
+| `--foreground` | `#0f1120` | Heading — 18.1:1 |
+| `--body-foreground` | `#3a3d4d` | Body copy — 10.4:1 |
+| `--muted-foreground` | `#4a4e5e` | Label/phụ — 8.0:1 nền base, 5.2:1 chỗ mesh đậm nhất |
+| `--surface` / `--card` | `#ffffff` | **Đục**, nền cho `.panel` (bảng, form) |
+| `--glass` / `--glass-strong` | trắng 68% / 88% | Kính — chỉ landing & auth |
+| `--hairline` | `rgb(15 17 32 / 8%)` | Viền (mực alpha thấp, **không** phải trắng) |
+| `--primary` | `#5b46e5` | Nền nút dưới chữ trắng — 6.08:1 |
+| `--primary-accent` | `#4f3fd0` | Chữ/link accent trên nền sáng — 6.88:1 |
 | `--radius` | `0.75rem` | Bo góc (thang sm→4xl) |
 
 ### Typography
 - **Geist Sans** — chữ giao diện; **Geist Mono** — số tiền & mã.
 - Nạp cục bộ qua gói `geist` (`next/font/local`) → **không fetch Google Fonts lúc build** (điều kiện tiên quyết để build Docker offline).
 
+### Icon
+**Phosphor** (`@phosphor-icons/react`) ở `weight="light"`. Import từ `/dist/ssr`: entrypoint chính kéo theo `IconContext` (client-only) và sẽ ép `"use client"` lên mọi Server Component có icon. Vì bản SSR không đọc được context, `weight="light"` phải đặt **tường minh ở từng chỗ dùng** — thiếu một chỗ là chỗ đó âm thầm render ở weight regular.
+
 ### Recipe dùng lại (CSS `@layer components`)
-- `.glass-card` — thẻ kính mờ: bo tròn 2xl, viền trắng 10%, `backdrop-blur-xl`, shadow sâu.
-- `.accent-gradient-text` — chữ gradient cho headline.
+- `.panel` — **mặt phẳng dữ liệu, đục**. Nền mọi bảng/form. Không kính: tiền trên kính mờ phủ mesh pastel là cách nhanh nhất để một bản redesign sáng trở nên khó đọc.
+- `.glass-card` / `.float-card` — kính trong, blur, shadow nhuốm tím. **Chỉ** landing & auth.
+- `.bezel` + `.bezel-core` — vỏ lồng hai lớp; bán kính lõi = bán kính vỏ trừ padding để hai đường cong song song.
+- `.cta-island` — pill nén khi nhấn, "well" icon lồng bên trong trượt chéo lên.
+- `.mesh-bg` (landing) / `.mesh-bg--subtle` (app, ~⅓ độ đậm) / `--rose` `--sky` `--mint` (nhịp từng section).
+- `.dot-field` — lớp chấm bi, mask thành vòng cung.
+- `.accent-gradient-text` — heading gradient (**dải text**). `.accent-gradient-fill` — nền gradient dưới chữ trắng (**dải fill**).
 - `.figure-lg` — số tiền lớn, mono, tabular-nums.
 
-### Màu biểu đồ (đã kiểm định mù màu)
-Các series trong biểu đồ dùng bảng màu categorical đã chạy qua **validator kiểm tra mù màu** (skill dataviz): xanh `#3987e5`, cam `#d95926`, aqua `#199e70`, vàng `#c98500` — đạt ngưỡng phân biệt CVD ΔE ≥ 8. Mức rủi ro fraud dùng **status palette** (good/warning/serious/critical) luôn kèm nhãn chữ, không bao giờ chỉ dựa vào màu.
+### Màu biểu đồ (đã kiểm định mù màu — GIỮ NGUYÊN)
+Bảng categorical đã qua **validator mù màu** (skill dataviz): xanh `#3987e5`, cam `#d95926`, aqua `#199e70`, vàng `#c98500` — CVD ΔE ≥ 8. **Đã đo lại trên nền sáng và giữ nguyên**, vì trên `.panel` trắng cả 4 series đều vượt ngưỡng 3:1 của WCAG 1.4.11: 3.64 / 3.88 / 3.41 / 3.07.
+
+> **Ràng buộc cứng:** biểu đồ **phải** nằm trên `.panel` đục, không được đặt thẳng lên nền mesh của app. Trên nền mesh, vàng tụt xuống 2.65:1 và aqua 2.94:1 — cả hai đều trượt. Đây là ràng buộc kỹ thuật của bảng màu, không phải lựa chọn thẩm mỹ.
+
+Mức rủi ro fraud dùng **status palette** (good/warning/serious/critical) luôn kèm nhãn chữ, không bao giờ chỉ dựa vào màu.
+
+> `CHART_INK` (grid, axis) buộc phải là giá trị màu thật chứ không dùng `var(--token)`: Recharts ghi chúng thành **SVG presentation attribute**, mà trình duyệt không resolve `var()` trong attribute. Nếu đổi `--grid-line` / `--muted-foreground` thì phải sửa tay `chart-colors.ts`.
 
 ---
 
@@ -153,7 +180,7 @@ src/
 ### Nhóm ứng dụng (API thật)
 | Màn hình | Mô tả |
 |----------|-------|
-| **Dashboard** | Thẻ số dư (glassmorphism, gradient), thao tác nhanh (gửi/nạp/rút), bảng giao dịch gần đây |
+| **Dashboard** | Thẻ số dư trên `.panel` đục, thao tác nhanh (gửi/nạp/rút), bảng giao dịch gần đây |
 | **Wallets** | Số dư, mã ví (copy), nút **Freeze/Unfreeze** (dialog kèm lý do) |
 | **Wallet detail** | Chi tiết 1 ví theo `[walletId]` |
 | **Send money** | Chọn người nhận từ **danh bạ** hoặc dán user ID; validate UUID + số tiền; hiển thị đúng lỗi **giới hạn KYC** từ backend |
@@ -256,7 +283,7 @@ Trong lúc dựng, một số điểm hợp đồng API thực tế **khác tài
 
 - Next.js 16 mới nhất: App Router, Turbopack, `proxy.ts`, async params, React Compiler.
 - Tách bạch **domain thật vs mock** rõ ràng, MSW cô lập hoàn toàn.
-- Design system nhất quán bằng token, glassmorphism, biểu đồ **kiểm định mù màu**.
+- Design system light-pastel nhất quán bằng token: gradient thương hiệu chia **ba dải hiệu chỉnh theo contrast**, bề mặt kính tách khỏi bề mặt dữ liệu, biểu đồ **kiểm định mù màu** và đo lại trên nền sáng.
 - Type-safe từ đầu tới cuối: Zod ↔ RHF ↔ axios ↔ TanStack Query.
 - Chất lượng CI: **lint sạch, `tsc` sạch, build sạch, 29 test xanh, Docker image chạy được**.
 - Chú trọng chi tiết fintech: idempotency, tiền tệ integer-cents, hạn mức KYC, đóng băng ví, audit log.

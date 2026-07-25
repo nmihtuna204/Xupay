@@ -1,7 +1,5 @@
 "use client";
 
-import { CHART_INK } from "./chart-colors";
-
 interface TooltipEntry {
   name?: unknown;
   value?: unknown;
@@ -38,10 +36,9 @@ export function ChartTooltip({
         : String(label);
 
   return (
-    <div
-      className="rounded-lg border px-3 py-2 text-xs shadow-lg"
-      style={{ background: CHART_INK.tooltipBg, borderColor: CHART_INK.tooltipBorder }}
-    >
+    // Themed via tokens rather than inline colors: unlike the SVG chrome, the
+    // tooltip is ordinary DOM, so it can just use the shared surface.
+    <div className="rounded-lg border border-hairline bg-surface px-3 py-2 text-xs shadow-[var(--shadow-panel)]">
       {labelText !== undefined && (
         <p className="mb-1.5 font-medium text-foreground">{labelText}</p>
       )}

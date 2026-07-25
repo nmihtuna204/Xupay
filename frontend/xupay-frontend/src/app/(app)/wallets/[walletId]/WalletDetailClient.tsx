@@ -13,7 +13,7 @@ export function WalletDetailClient({ walletId }: { walletId: string }) {
     <>
       <PageHeader title="Wallet details" />
       {walletQuery.isLoading ? (
-        <Skeleton className="h-52 rounded-2xl" />
+        <Skeleton className="h-52 rounded-xl" />
       ) : walletQuery.data ? (
         <WalletDetailPanel wallet={walletQuery.data} />
       ) : (

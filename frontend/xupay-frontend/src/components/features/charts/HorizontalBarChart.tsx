@@ -54,7 +54,8 @@ export function HorizontalBarChart({
           width={130}
         />
         <Tooltip
-          cursor={{ fill: "rgba(255,255,255,0.04)" }}
+          // Ink, not white: the hover band was invisible on the light surface.
+          cursor={{ fill: "rgba(15,17,32,0.05)" }}
           content={({ active, label, payload }) => (
             <ChartTooltip
               active={active}
