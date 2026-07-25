@@ -113,7 +113,7 @@ function FraudSection() {
         </Reveal>
         <Reveal as="div" delay={200} className="mt-16 flex items-end justify-center gap-16">
           <div>
-            <p className="figure-lg text-[clamp(3rem,7vw,5rem)] leading-none text-primary">
+            <p className="figure-lg text-[clamp(3rem,7vw,5rem)] leading-none text-primary-accent">
               &lt;40ms
             </p>
             <p className="mt-3 text-sm text-muted-foreground">Median scoring latency</p>

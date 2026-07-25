@@ -44,6 +44,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-primary-accent: var(--primary-accent);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -83,10 +84,16 @@
   --card-foreground: #fafafa;
   --popover: #141519;
   --popover-foreground: #fafafa;
-  /* The single accent — electric blue, used sparingly (~5%): links, focus,
-     one CTA, one data highlight. Never a full section fill. */
-  --primary: #4d7fff;
+  /* The single accent - electric blue, used sparingly (~5%): links, focus,
+     one CTA, one data highlight. Never a full section fill.
+     TWO STEPS OF ONE RAMP (same hue, 223deg), because a single hex cannot
+     carry both jobs at WCAG AA:
+       --primary        fill behind WHITE text  -> 5.48:1 vs #ffffff
+       --primary-accent text/links ON near-black -> 5.36:1 vs #0c0d10
+     Using --primary for on-dark text would land at 3.55:1 and fail AA. */
+  --primary: #2f5fe0;
   --primary-foreground: #ffffff;
+  --primary-accent: #4d7fff;
   --secondary: #1b1d23;
   --secondary-foreground: #fafafa;
   --muted: #17181c;
@@ -96,6 +103,9 @@
   --destructive: #e5484d;
   --border: rgb(255 255 255 / 6%);
   --input: rgb(255 255 255 / 8%);
+  /* Focus ring keeps the BRIGHT step: it sits on near-black, where the light
+     end of the ramp is the readable one (5.36:1, well past the 3:1 that
+     WCAG 1.4.11 asks of non-text indicators). */
   --ring: #4d7fff;
   /* Chart series — VALIDATED colorblind-safe, do not change (ΔE ≥ 8). */
   --chart-1: #3987e5;
@@ -106,7 +116,7 @@
   --radius: 0.5rem;
   --sidebar: #0e0f13;
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #4d7fff;
+  --sidebar-primary: #2f5fe0;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1b1d23;
   --sidebar-accent-foreground: #fafafa;
@@ -159,11 +169,6 @@
     @apply rounded-xl border border-white/[0.06] bg-surface;
   }
 
-  /* Gradient accent text — used ONLY on the landing hero. */
-  .accent-gradient-text {
-    @apply bg-gradient-to-r from-accent-from to-accent-to bg-clip-text text-transparent;
-  }
-
   /* Big legible money figures — tabular so digits don't jitter on update.
      Carries a sensible default size; any explicit text-* utility on the
      element overrides it (utilities layer wins over components layer). */
@@ -181,13 +186,6 @@
     letter-spacing: -0.03em;
     line-height: 0.98;
   }
-  .display-hero {
-    font-size: clamp(3.5rem, 9vw, 8rem);
-    font-weight: 560;
-    letter-spacing: -0.035em;
-    line-height: 0.95;
-  }
-
   /* Small uppercase eyebrow/kicker label. */
   .kicker {
     @apply text-xs font-medium uppercase text-muted-foreground;
