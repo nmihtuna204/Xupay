@@ -69,8 +69,13 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
-  /* Spacing rhythm for cinematic sections */
-  --spacing-section: clamp(6rem, 12vw, 12rem);
+  /* Spacing rhythm for cinematic sections.
+     Capped at 6rem/96px: .section-full already centres its content inside a
+     100svh box, so this padding is only the gutter that applies once content
+     outgrows the viewport. The old clamp(6rem,12vw,12rem) hit 192px a side,
+     which pushed the hero to ~816px on a 1440x800 laptop and dropped the CTA
+     below the fold. */
+  --spacing-section: clamp(3.5rem, 5vw, 6rem);
   /* Purposeful motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
