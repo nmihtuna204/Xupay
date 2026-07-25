@@ -6,6 +6,7 @@ import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
+import { ThemeProvider } from "@/providers/theme-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,10 +23,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
-      // The reveal boot script adds `.reveal-ready` to <html> before hydration
-      // (same pattern as theme scripts) — suppress the expected mismatch.
+      // Two pre-hydration writers touch <html>: the reveal boot script adds
+      // `.reveal-ready`, and next-themes adds the theme class. Both are the
+      // standard pattern, and both need the mismatch suppressed.
       suppressHydrationWarning
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
@@ -48,10 +50,12 @@ export default function RootLayout({
               "if(document.readyState!=='loading')init();else document.addEventListener('DOMContentLoaded',init);})();",
           }}
         />
-        <QueryProvider>
-          {children}
-          <Toaster position="top-right" />
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            {children}
+            <Toaster position="top-right" />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

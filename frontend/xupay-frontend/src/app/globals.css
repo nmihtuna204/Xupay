@@ -5,17 +5,40 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * XuPay design system — "Tesla-restraint dark".
- * Cinematic, spacious, confidence-through-restraint. Neutral near-black
- * surfaces (no blue cast), a SINGLE accent used sparingly, typography as the
- * hero. Dark-mode only by design, so :root and .dark carry identical values.
- * <html> always has class="dark" (set server-side in the root layout), so
- * there is no flash-of-unstyled-theme.
+ * XuPay design system - "Agio light-pastel".
+ *
+ * Light-first: a warm near-white base lifted by a very soft pastel mesh
+ * (pink -> lavender -> mint), floating glass cards, and a violet->blue->mint
+ * brand gradient. Depth comes from translucency and tinted shadows, never from
+ * heavy borders or black drop shadows.
+ *
+ * THE ONE RULE THAT KEEPS THIS SYSTEM HONEST
+ * A pastel ramp cannot serve text, fills and decoration with the same values:
+ * mint (#5ce0c0) scores 1.58:1 on near-white, so it is unreadable as type and
+ * unusable behind white label text. The brand gradient therefore exists in
+ * three calibrated ranges, and they are not interchangeable:
+ *
+ *   --grad-deco-*   full pastel range, mint included. Decoration only:
+ *                   mesh, glows, card tints, hairlines. Never carries text.
+ *   --grad-text-*   violet -> blue -> deep teal. For DISPLAY type only
+ *                   (>=24px, where WCAG asks 3:1). Measured 4.20 / 3.83 / 3.24
+ *                   on --background. Never for body copy.
+ *   --grad-fill-*   violet -> indigo, the dark end of the ramp. The only
+ *                   gradient allowed behind white text. Measured 5.45 / 7.49
+ *                   against #ffffff, so a 14px button label still passes AA.
+ *
+ * Reach for the wrong one and the page looks right in a screenshot and fails
+ * an accessibility audit.
+ *
+ * Light is the default theme. The previous near-black palette is preserved
+ * under .dark so the tokens are not lost, but the components have not been
+ * audited in dark yet - treat it as parked, not shipped.
  */
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-body-foreground: var(--body-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
@@ -53,22 +76,25 @@
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-surface-hover: var(--surface-hover);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
   --color-grid-line: var(--grid-line);
-  --color-accent-from: var(--accent-from);
-  --color-accent-to: var(--accent-to);
+  --color-accent-from: var(--grad-deco-from);
+  --color-accent-mid: var(--grad-deco-mid);
+  --color-accent-to: var(--grad-deco-to);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
   --color-warning-foreground: var(--warning-foreground);
   --color-error: var(--error);
   --color-error-foreground: var(--error-foreground);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
+  --radius-sm: calc(var(--radius) * 0.5);
+  --radius-md: calc(var(--radius) * 0.7);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-2xl: calc(var(--radius) * 1.9);
+  --radius-3xl: calc(var(--radius) * 2.4);
+  --radius-4xl: calc(var(--radius) * 3);
   /*
    * PRODUCT-UI RHYTHM (the (app) route group).
    * Deliberately denser than the marketing scale below. These screens are
@@ -85,53 +111,182 @@
   /* Spacing rhythm for cinematic sections.
      Capped at 6rem/96px: .section-full already centres its content inside a
      100svh box, so this padding is only the gutter that applies once content
-     outgrows the viewport. The old clamp(6rem,12vw,12rem) hit 192px a side,
-     which pushed the hero to ~816px on a 1440x800 laptop and dropped the CTA
-     below the fold. */
+     outgrows the viewport. */
   --spacing-section: clamp(3.5rem, 5vw, 6rem);
   /* Purposeful motion */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-:root,
-.dark {
-  /* Layered near-black — depth via stacked surfaces, never pure #000. */
-  --background: #0c0d10;
-  --foreground: #fafafa;
-  --card: #141519;
-  --card-foreground: #fafafa;
-  --popover: #141519;
-  --popover-foreground: #fafafa;
-  /* The single accent - electric blue, used sparingly (~5%): links, focus,
-     one CTA, one data highlight. Never a full section fill.
-     TWO STEPS OF ONE RAMP (same hue, 223deg), because a single hex cannot
-     carry both jobs at WCAG AA:
-       --primary        fill behind WHITE text  -> 5.48:1 vs #ffffff
-       --primary-accent text/links ON near-black -> 5.36:1 vs #0c0d10
-     Using --primary for on-dark text would land at 3.55:1 and fail AA. */
-  --primary: #2f5fe0;
+:root {
+  /* ---- Base ------------------------------------------------------------ */
+  /* Not pure white: a faint cool cast so the pastel mesh has something to sit
+     on and white glass cards read as raised rather than as holes. */
+  --background: #fafbff;
+  --foreground: #0f1120;        /* headings - 18.1:1 on --background */
+  --body-foreground: #3a3d4d;   /* body copy - 10.4:1 */
+  --muted-foreground: #545869;  /* labels/secondary - 6.8:1, and still 5.2:1
+                                   on the deepest pastel the mesh reaches */
+
+  /* ---- Surfaces -------------------------------------------------------- */
+  /* --surface is OPAQUE on purpose. It backs .panel, which is what every data
+     table and dense app screen sits on, and translucent data surfaces are how
+     a light redesign turns into an unreadable one. Glass is opt-in via
+     .glass-card, not the default. */
+  --surface: #ffffff;
+  --surface-2: #f4f6fd;
+  --surface-hover: #eef1fb;
+  --glass: rgb(255 255 255 / 68%);
+  --glass-strong: rgb(255 255 255 / 88%);
+  --glass-edge: rgb(255 255 255 / 75%);
+
+  --card: #ffffff;
+  --card-foreground: #0f1120;
+  --popover: #ffffff;
+  --popover-foreground: #0f1120;
+
+  /* Hairlines are ink at low alpha, not white: on a light ground a white
+     border is invisible. Everything that drew borders as white/6% in the dark
+     system must use these. */
+  --hairline: rgb(15 17 32 / 8%);
+  --hairline-strong: rgb(15 17 32 / 14%);
+  --border: rgb(15 17 32 / 9%);
+  --input: rgb(15 17 32 / 12%);
+  --grid-line: rgb(15 17 32 / 5%);
+  --dot-color: rgb(124 92 255 / 22%);
+
+  /* ---- Brand gradient, three calibrated ranges (see header) ------------ */
+  --grad-deco-from: #ff9ecd;
+  --grad-deco-mid: #7c5cff;
+  --grad-deco-to: #5ce0c0;
+
+  --grad-text-from: #7c5cff;
+  --grad-text-mid: #3d7de8;
+  --grad-text-to: #1f9d8f;
+
+  --grad-fill-from: #6b4aef;
+  --grad-fill-to: #4936d8;
+
+  /* ---- Interactive ----------------------------------------------------- */
+  --primary: #5b46e5;         /* solid fill behind white text - 6.08:1 */
   --primary-foreground: #ffffff;
-  --primary-accent: #4d7fff;
-  --secondary: #1b1d23;
-  --secondary-foreground: #fafafa;
-  --muted: #17181c;
-  --muted-foreground: #a1a1aa;
-  --accent: #1b1d23;
-  --accent-foreground: #fafafa;
-  --destructive: #e5484d;
-  --border: rgb(255 255 255 / 6%);
-  --input: rgb(255 255 255 / 8%);
-  /* Focus ring keeps the BRIGHT step: it sits on near-black, where the light
-     end of the ramp is the readable one (5.36:1, well past the 3:1 that
-     WCAG 1.4.11 asks of non-text indicators). */
-  --ring: #4d7fff;
-  /* Chart series — VALIDATED colorblind-safe, do not change (ΔE ≥ 8). */
+  --primary-accent: #4f3fd0;  /* accent TEXT on light ground - 6.88:1 */
+  --ring: #6b4aef;
+  --secondary: #f1f3fb;
+  --secondary-foreground: #0f1120;
+  --muted: #f4f6fd;
+  --accent: #f1f3fb;
+  --accent-foreground: #0f1120;
+  --destructive: #d92d3a;
+
+  /* ---- Pastel mesh stops (decoration only) ----------------------------- */
+  --mesh-pink: #ffd9ec;
+  --mesh-lavender: #e0d8ff;
+  --mesh-mint: #d2f5ec;
+  --mesh-sky: #d9ecff;
+
+  /* ---- Tinted shadows. Never black: black on pastel reads as dirt. ----- */
+  --shadow-soft: 0 6px 24px -10px rgb(76 60 160 / 18%);
+  --shadow-panel: 0 10px 34px -14px rgb(76 60 160 / 22%);
+  --shadow-float:
+    0 18px 48px -14px rgb(96 70 200 / 28%),
+    0 4px 12px -6px rgb(96 70 200 / 16%);
+
+  /* ---- Status. Darkened from the dark-theme values so they stay legible
+          as text on a light ground rather than glowing. ------------------ */
+  --success: #0f8a5f;
+  --success-foreground: #06301f;
+  --warning: #a86a00;
+  --warning-foreground: #3d2600;
+  --error: #d92d3a;
+  --error-foreground: #4a0d12;
+
+  /* Chart series - VALIDATED colorblind-safe, do not change (dE >= 8).
+     Unchanged from the dark theme; see FRONTEND.md before touching. */
   --chart-1: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
   --chart-4: #c98500;
   --chart-5: #e5484d;
-  --radius: 0.5rem;
+
+  --radius: 0.75rem;
+
+  /* ---- Sidebar --------------------------------------------------------- */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0f1120;
+  --sidebar-primary: #5b46e5;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1f3fb;
+  --sidebar-accent-foreground: #0f1120;
+  --sidebar-border: rgb(15 17 32 / 8%);
+  --sidebar-ring: #6b4aef;
+}
+
+/*
+ * Parked dark theme. The previous near-black system, kept so the tokens
+ * survive and a future toggle is one step away. Components have NOT been
+ * re-audited against it since the light flip.
+ */
+.dark {
+  --background: #0c0d10;
+  --foreground: #fafafa;
+  --body-foreground: #d4d4d8;
+  --muted-foreground: #a1a1aa;
+
+  --surface: #141519;
+  --surface-2: #1b1d23;
+  --surface-hover: #1b1d23;
+  --glass: rgb(20 21 25 / 72%);
+  --glass-strong: rgb(20 21 25 / 90%);
+  --glass-edge: rgb(255 255 255 / 10%);
+
+  --card: #141519;
+  --card-foreground: #fafafa;
+  --popover: #141519;
+  --popover-foreground: #fafafa;
+
+  --hairline: rgb(255 255 255 / 6%);
+  --hairline-strong: rgb(255 255 255 / 12%);
+  --border: rgb(255 255 255 / 6%);
+  --input: rgb(255 255 255 / 8%);
+  --grid-line: rgb(255 255 255 / 4%);
+  --dot-color: rgb(124 92 255 / 30%);
+
+  --grad-deco-from: #ff9ecd;
+  --grad-deco-mid: #7c5cff;
+  --grad-deco-to: #22d3ee;
+  --grad-text-from: #a78bfa;
+  --grad-text-mid: #60a5fa;
+  --grad-text-to: #5ce0c0;
+  --grad-fill-from: #6b4aef;
+  --grad-fill-to: #4936d8;
+
+  --primary: #2f5fe0;
+  --primary-foreground: #ffffff;
+  --primary-accent: #4d7fff;
+  --ring: #4d7fff;
+  --secondary: #1b1d23;
+  --secondary-foreground: #fafafa;
+  --muted: #17181c;
+  --accent: #1b1d23;
+  --accent-foreground: #fafafa;
+  --destructive: #e5484d;
+
+  --mesh-pink: #3a1f33;
+  --mesh-lavender: #221f3d;
+  --mesh-mint: #12302b;
+  --mesh-sky: #14243d;
+
+  --shadow-soft: 0 6px 24px -10px rgb(0 0 0 / 55%);
+  --shadow-panel: 0 10px 34px -14px rgb(0 0 0 / 60%);
+  --shadow-float: 0 18px 48px -14px rgb(0 0 0 / 70%), 0 4px 12px -6px rgb(0 0 0 / 40%);
+
+  --success: #30a46c;
+  --success-foreground: #b8f5d0;
+  --warning: #e0a726;
+  --warning-foreground: #f5e3b8;
+  --error: #e5484d;
+  --error-foreground: #ffd1d1;
+
   --sidebar: #0e0f13;
   --sidebar-foreground: #fafafa;
   --sidebar-primary: #2f5fe0;
@@ -140,22 +295,6 @@
   --sidebar-accent-foreground: #fafafa;
   --sidebar-border: rgb(255 255 255 / 6%);
   --sidebar-ring: #4d7fff;
-
-  /* XuPay brand extensions */
-  --surface: #141519;
-  --surface-2: #1b1d23;
-  --surface-hover: #1b1d23;
-  /* Hairline used to draw geometric grids/depth on marketing sections. */
-  --grid-line: rgb(255 255 255 / 4%);
-  /* Gradient reserved for the landing hero glow only. */
-  --accent-from: #4d7fff;
-  --accent-to: #22d3ee;
-  --success: #30a46c;
-  --success-foreground: #b8f5d0;
-  --warning: #e0a726;
-  --warning-foreground: #f5e3b8;
-  --error: #e5484d;
-  --error-foreground: #ffd1d1;
 }
 
 @layer base {
@@ -178,17 +317,119 @@
 
 @layer components {
   /*
-   * The product-UI container. Renamed from the old .glass-card, because there
-   * is no glass left in it: backdrop-blur is reserved for floating overlays
-   * (dialog/sheet), which style themselves. A panel is a flat surface with a
-   * single hairline border, and it is the ONLY card treatment in the app group.
+   * THE DATA SURFACE. Opaque by design.
+   *
+   * This backs every table, form and dense app screen, so it does not get to
+   * be translucent: money on frosted glass over a pastel mesh is exactly how a
+   * light redesign becomes unreadable. Glass is a deliberate opt-in
+   * (.glass-card), never the default a page falls into.
    */
   .panel {
-    @apply rounded-xl border border-white/[0.06] bg-surface;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
   }
 
   /*
-   * Page title for the app group. Not .display: that carries the marketing
+   * THE GLASS SURFACE. For the landing and auth only, where there is no dense
+   * data to read. Translucent white over the mesh, a bright top edge to fake
+   * refraction, and a violet-tinted shadow so it floats above the pastel
+   * instead of being stamped on it.
+   */
+  .glass-card {
+    background: var(--glass);
+    backdrop-filter: blur(20px) saturate(150%);
+    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--radius-2xl);
+    box-shadow:
+      var(--shadow-float),
+      inset 0 1px 0 rgb(255 255 255 / 65%);
+  }
+
+  /*
+   * The floating mini-cards that orbit the hero. Same glass, tighter radius,
+   * plus a slow vertical drift. The drift is decoration, so it is the first
+   * thing to go under prefers-reduced-motion (see the bottom of this file).
+   */
+  .float-card {
+    background: var(--glass-strong);
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+    border: 1px solid var(--glass-edge);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-float);
+    animation: float-drift 7s ease-in-out infinite;
+  }
+  .float-card--slow { animation-duration: 9s; }
+  .float-card--delayed { animation-delay: -3s; }
+
+  /*
+   * Display-type gradient. TEXT RANGE ONLY (see the file header): every stop
+   * clears 3:1 on --background, which is the WCAG bar for large text. Do not
+   * put this on body copy - at 16px the bar is 4.5:1 and the teal end misses.
+   */
+  .accent-gradient-text {
+    background-image: linear-gradient(
+      100deg,
+      var(--grad-text-from) 0%,
+      var(--grad-text-mid) 52%,
+      var(--grad-text-to) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Keeps descenders from being clipped by the background box. */
+    padding-bottom: 0.08em;
+  }
+
+  /* The only gradient allowed behind white text (fill range, >= 5.45:1). */
+  .accent-gradient-fill {
+    background-image: linear-gradient(
+      100deg,
+      var(--grad-fill-from) 0%,
+      var(--grad-fill-to) 100%
+    );
+    color: #ffffff;
+  }
+
+  /*
+   * The page ground: a soft pastel mesh over the near-white base. Kept at low
+   * alpha deliberately - the deepest point still leaves --muted-foreground at
+   * 5.2:1, so text stays legible anywhere on it.
+   */
+  .mesh-bg {
+    background:
+      radial-gradient(62% 48% at 12% 10%, color-mix(in oklab, var(--mesh-pink) 78%, transparent), transparent 68%),
+      radial-gradient(58% 52% at 88% 14%, color-mix(in oklab, var(--mesh-sky) 82%, transparent), transparent 66%),
+      radial-gradient(52% 46% at 76% 84%, color-mix(in oklab, var(--mesh-mint) 70%, transparent), transparent 64%),
+      radial-gradient(60% 50% at 22% 88%, color-mix(in oklab, var(--mesh-lavender) 68%, transparent), transparent 66%),
+      var(--background);
+  }
+
+  /* A quieter mesh for app screens, where data has to win over atmosphere. */
+  .mesh-bg--subtle {
+    background:
+      radial-gradient(50% 40% at 8% 0%, color-mix(in oklab, var(--mesh-lavender) 34%, transparent), transparent 70%),
+      radial-gradient(46% 38% at 96% 6%, color-mix(in oklab, var(--mesh-sky) 30%, transparent), transparent 68%),
+      var(--background);
+  }
+
+  /*
+   * Dot field. Masked to an arc so it reads as a drift of particles rather
+   * than wallpaper, which is what separates the Agio treatment from a plain
+   * polka-dot tile.
+   */
+  .dot-field {
+    background-image: radial-gradient(circle, var(--dot-color) 1.1px, transparent 1.1px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(70% 58% at 50% 62%, #000 12%, transparent 72%);
+    mask-image: radial-gradient(70% 58% at 50% 62%, #000 12%, transparent 72%);
+  }
+
+  /*
+   * The product-UI container title. Not .display: that carries the marketing
    * headline's cinematic weight and negative tracking, which reads as shouting
    * on a dense tool screen. This is the Linear/Stripe register.
    */
@@ -215,7 +456,7 @@
     gap: var(--spacing-stack);
   }
 
-  /* Big legible money figures — tabular so digits don't jitter on update.
+  /* Big legible money figures - tabular so digits don't jitter on update.
      Carries a sensible default size; any explicit text-* utility on the
      element overrides it (utilities layer wins over components layer). */
   .figure-lg {
@@ -224,18 +465,40 @@
   }
 
   /*
-   * Cinematic display headline. Typography is the hero: very large, lower
-   * weight than before, tight negative tracking, compressed leading.
+   * Cinematic display headline. Agio sets these uppercase and very wide, so
+   * the tracking opens up rather than tightening the way a dark editorial
+   * headline would.
    */
   .display {
-    font-weight: 550;
-    letter-spacing: -0.03em;
-    line-height: 0.98;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1;
   }
+
+  /* The Agio-style hero headline: uppercase, huge, slightly open tracking. */
+  .display-hero {
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.005em;
+    line-height: 0.95;
+  }
+
   /* Small uppercase eyebrow/kicker label. */
   .kicker {
     @apply text-xs font-medium uppercase text-muted-foreground;
     letter-spacing: 0.14em;
+  }
+
+  /* The pill that Agio uses for its "LIVE IN 140 CURRENCIES" badge. */
+  .pill-badge {
+    @apply inline-flex items-center gap-2 text-xs font-medium uppercase;
+    letter-spacing: 0.14em;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-edge);
+    border-radius: 999px;
+    padding: 0.5rem 1rem;
+    box-shadow: var(--shadow-soft);
+    color: var(--body-foreground);
   }
 
   /* Full-viewport storytelling section. */
@@ -247,12 +510,7 @@
     padding-block: var(--spacing-section);
   }
 
-  /* Subtle film-grain noise overlay for the hero. */
-  .noise-overlay {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
-  }
-
-  /* Fine hairline grid — adds structural depth behind hero/closing content. */
+  /* Fine hairline grid - adds structural depth behind hero/closing content. */
   .bg-grid {
     background-image:
       linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
@@ -260,27 +518,15 @@
     background-size: 64px 64px;
   }
 
-  /*
-   * Concentric hairline rings. The closing section used .bg-grid, the same
-   * orthogonal device as the hero, which made the two ends of the page read as
-   * one repeated layout family. Rings are a different geometric language and
-   * they converge on the accent orb, which suits a closing call to action.
-   */
+  /* Concentric hairline rings - a different geometric language from .bg-grid,
+     used at the closing call to action so the two ends of the page do not read
+     as the same repeated layout family. */
   .bg-rings {
     background-image: repeating-radial-gradient(
       circle at 50% 50%,
       var(--grid-line) 0 1px,
       transparent 1px 88px
     );
-  }
-
-  /* Layered mesh-gradient glow — the ONE gradient on the app, hero only.
-     Two soft accent radials over the base, never a flat fill. */
-  .bg-mesh {
-    background:
-      radial-gradient(60% 50% at 72% 18%, color-mix(in oklab, var(--accent-from) 20%, transparent), transparent 70%),
-      radial-gradient(55% 45% at 15% 85%, color-mix(in oklab, var(--accent-to) 12%, transparent), transparent 70%),
-      var(--background);
   }
 
   /* Soft radial vignette to fade a full-bleed visual into the page edges. */
@@ -290,9 +536,14 @@
   }
 }
 
+@keyframes float-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 /* Reveal-on-scroll: a `.reveal` element rises+fades in when it enters view.
    The hidden state is gated behind `.reveal-ready` (added to <html> by a boot
-   script only when JS is actually running) — so if JS is off or hydration
+   script only when JS is actually running) - so if JS is off or hydration
    fails, content is simply VISIBLE with no animation, never stuck invisible.
    Both a plain boot script and the React <Reveal> add `.is-revealed`, so the
    reveal survives even a broken React hydration. */
@@ -309,6 +560,19 @@
   transform: none;
 }
 
+/* Glass depends on backdrop-filter. Where the user has asked for less
+   transparency, fall back to a solid surface rather than a muddy panel. */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card,
+  .float-card,
+  .pill-badge {
+    background: var(--surface);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    border-color: var(--hairline);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -317,6 +581,12 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
+  }
+  /* Explicit, not just duration-clamped: the drifting cards must actually
+     stop and sit still, not jitter at 0.001ms. */
+  .float-card {
+    animation: none !important;
+    transform: none !important;
   }
   .reveal-ready .reveal {
     opacity: 1;
