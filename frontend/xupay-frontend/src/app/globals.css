@@ -113,8 +113,11 @@
      100svh box, so this padding is only the gutter that applies once content
      outgrows the viewport. */
   --spacing-section: clamp(3.5rem, 5vw, 6rem);
-  /* Purposeful motion */
+  /* Purposeful motion. --ease-island is soft-skill's heavy-mass curve: slow to
+     leave, decisive to arrive, which is what makes a control feel weighted
+     rather than merely animated. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
@@ -124,8 +127,11 @@
   --background: #fafbff;
   --foreground: #0f1120;        /* headings - 18.1:1 on --background */
   --body-foreground: #3a3d4d;   /* body copy - 10.4:1 */
-  --muted-foreground: #545869;  /* labels/secondary - 6.8:1, and still 5.2:1
-                                   on the deepest pastel the mesh reaches */
+  /* Labels sit at 8.0:1 on the base. Darkened from #545869 when the mesh was
+     pushed toward the Agio reference: against the deeper lavender stop that
+     value measured 4.47:1 and missed AA. This holds 5.2:1 at the mesh's
+     darkest point, so the atmosphere can be strong without costing legibility. */
+  --muted-foreground: #4a4e5e;
 
   /* ---- Surfaces -------------------------------------------------------- */
   /* --surface is OPAQUE on purpose. It backs .panel, which is what every data
@@ -178,11 +184,18 @@
   --accent-foreground: #0f1120;
   --destructive: #d92d3a;
 
-  /* ---- Pastel mesh stops (decoration only) ----------------------------- */
-  --mesh-pink: #ffd9ec;
-  --mesh-lavender: #e0d8ff;
-  --mesh-mint: #d2f5ec;
-  --mesh-sky: #d9ecff;
+  /* ---- Pastel mesh stops (decoration only) -----------------------------
+     Saturated toward the Agio reference. The lavender stop is the darkest
+     point any text has to survive; --muted-foreground was recalculated
+     against it rather than the base, which is the trade that lets the mesh
+     be this strong. */
+  --mesh-pink: #ffc9e4;
+  --mesh-lavender: #d3c6ff;
+  --mesh-mint: #b8f0e0;
+  --mesh-sky: #c2e0ff;
+
+  /* Double-bezel shell tint (soft-skill nested-enclosure architecture). */
+  --bezel-shell: rgb(15 17 32 / 4%);
 
   /* ---- Tinted shadows. Never black: black on pastel reads as dirt. ----- */
   --shadow-soft: 0 6px 24px -10px rgb(76 60 160 / 18%);
@@ -366,6 +379,59 @@
   .float-card--delayed { animation-delay: -3s; }
 
   /*
+   * DOUBLE-BEZEL (soft-skill nested enclosure). A premium container is not a
+   * card dropped on a background: it is a plate seated in a tray. The shell
+   * carries the tint, the hairline and the outer radius; the core sits inside
+   * with its own surface and a concentric radius, computed by subtracting the
+   * shell padding so the two curves stay parallel rather than merely similar.
+   */
+  .bezel {
+    background: var(--bezel-shell);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-3xl);
+    padding: 0.5rem;
+    box-shadow: var(--shadow-float);
+  }
+  .bezel-core {
+    background: var(--surface);
+    border-radius: calc(var(--radius-3xl) - 0.5rem);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  }
+  /* Glass variant, for the landing where the mesh should read through. */
+  .bezel-core--glass {
+    background: var(--glass-strong);
+    backdrop-filter: blur(18px) saturate(150%);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  /*
+   * ISLAND CTA. A pill that responds with mass: the whole control compresses
+   * on press while the nested icon well drifts out and up, so the button has
+   * internal tension instead of a flat colour swap.
+   */
+  .cta-island {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: 999px;
+    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: transform 0.5s var(--ease-island), box-shadow 0.5s var(--ease-island);
+  }
+  .cta-island:active { transform: scale(0.98); }
+  .cta-island__well {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    transition: transform 0.5s var(--ease-island);
+  }
+  .group\/cta:hover .cta-island__well { transform: translate(3px, -2px) scale(1.06); }
+
+  /*
    * Display-type gradient. TEXT RANGE ONLY (see the file header): every stop
    * clears 3:1 on --background, which is the WCAG bar for large text. Do not
    * put this on body copy - at 16px the bar is 4.5:1 and the teal end misses.
@@ -401,10 +467,31 @@
    */
   .mesh-bg {
     background:
-      radial-gradient(62% 48% at 12% 10%, color-mix(in oklab, var(--mesh-pink) 78%, transparent), transparent 68%),
-      radial-gradient(58% 52% at 88% 14%, color-mix(in oklab, var(--mesh-sky) 82%, transparent), transparent 66%),
-      radial-gradient(52% 46% at 76% 84%, color-mix(in oklab, var(--mesh-mint) 70%, transparent), transparent 64%),
-      radial-gradient(60% 50% at 22% 88%, color-mix(in oklab, var(--mesh-lavender) 68%, transparent), transparent 66%),
+      radial-gradient(62% 48% at 12% 8%, color-mix(in oklab, var(--mesh-pink) 94%, transparent), transparent 70%),
+      radial-gradient(58% 54% at 90% 12%, color-mix(in oklab, var(--mesh-sky) 96%, transparent), transparent 68%),
+      radial-gradient(54% 48% at 78% 86%, color-mix(in oklab, var(--mesh-mint) 88%, transparent), transparent 66%),
+      radial-gradient(62% 52% at 20% 90%, color-mix(in oklab, var(--mesh-lavender) 90%, transparent), transparent 68%),
+      var(--background);
+  }
+
+  /* Per-section grounds, so five sections have a colour rhythm instead of one
+     flat wash repeated down the page. Each keeps one pastel dominant. */
+  .mesh-bg--rose {
+    background:
+      radial-gradient(58% 50% at 84% 8%, color-mix(in oklab, var(--mesh-pink) 80%, transparent), transparent 68%),
+      radial-gradient(50% 44% at 8% 88%, color-mix(in oklab, var(--mesh-lavender) 62%, transparent), transparent 66%),
+      var(--background);
+  }
+  .mesh-bg--sky {
+    background:
+      radial-gradient(56% 50% at 10% 10%, color-mix(in oklab, var(--mesh-sky) 88%, transparent), transparent 68%),
+      radial-gradient(52% 46% at 90% 84%, color-mix(in oklab, var(--mesh-mint) 62%, transparent), transparent 66%),
+      var(--background);
+  }
+  .mesh-bg--mint {
+    background:
+      radial-gradient(54% 48% at 88% 14%, color-mix(in oklab, var(--mesh-mint) 84%, transparent), transparent 66%),
+      radial-gradient(50% 46% at 6% 82%, color-mix(in oklab, var(--mesh-sky) 66%, transparent), transparent 66%),
       var(--background);
   }
 
@@ -549,15 +636,21 @@
    reveal survives even a broken React hydration. */
 .reveal-ready .reveal {
   opacity: 0;
-  transform: translateY(24px);
+  /* Heavier entry than a plain fade-up: soft-skill asks for mass, so the
+     element also resolves out of a slight blur. Both properties are
+     compositor-friendly, so this stays a GPU job. */
+  transform: translateY(40px);
+  filter: blur(6px);
   transition:
-    opacity 0.7s var(--ease-out-expo),
-    transform 0.7s var(--ease-out-expo);
+    opacity 0.85s var(--ease-island),
+    transform 0.85s var(--ease-island),
+    filter 0.85s var(--ease-island);
   will-change: opacity, transform;
 }
 .reveal-ready .reveal.is-revealed {
   opacity: 1;
   transform: none;
+  filter: none;
 }
 
 /* Glass depends on backdrop-filter. Where the user has asked for less
@@ -591,5 +684,6 @@
   .reveal-ready .reveal {
     opacity: 1;
     transform: none;
+    filter: none;
   }
 }

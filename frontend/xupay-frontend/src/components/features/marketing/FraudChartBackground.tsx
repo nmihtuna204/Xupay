@@ -12,10 +12,18 @@ const DATA = [
  * Full-bleed decorative area chart behind the fraud section. Uses the
  * validated colorblind-safe chart-1 blue; kept faint so foreground copy stays
  * legible. Non-interactive and animation-free.
+ *
+ * Anchored to the lower half and masked to fade upward, so the curve reads as
+ * a horizon under the section rather than a wash behind the headline. On the
+ * light ground an unmasked 35% chart tinted the copy area; the mask keeps the
+ * text sitting on clean background.
  */
 export function FraudChartBackground() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 opacity-[0.35]">
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-x-0 bottom-0 top-1/3 -z-10 opacity-[0.28] [mask-image:linear-gradient(to_top,#000_35%,transparent_100%)]"
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={DATA} margin={{ top: 40, right: 0, bottom: 0, left: 0 }}>
           <defs>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { useInView } from "framer-motion";
+import { useInView } from "motion/react";
 import NumberFlow from "@number-flow/react";
 import { cn } from "@/lib/utils";
 import { formatCurrencyFromCents, moneyFormatOptions } from "@/lib/format";
@@ -18,7 +18,7 @@ const TARGET_CENTS = 1_184_792_000;
 
 /**
  * Animated ledger. When it scrolls into view the balance counts up (via
- * NumberFlow) and the rows stagger in. `useInView` (framer-motion) owns the
+ * NumberFlow) and the rows stagger in. `useInView` (motion/react) owns the
  * IntersectionObserver, so there's no manual effect/setState here; NumberFlow
  * and the CSS transitions both collapse to their final state under reduced
  * motion.
@@ -32,9 +32,11 @@ export function LedgerPanel() {
   const active = useInView(ref, { once: true, amount: 0.4 });
 
   return (
-    <div ref={ref} className="panel p-7 sm:p-8">
-      <p className="kicker">Balance</p>
-      <p className="figure-lg mt-3 text-[clamp(1.875rem,4.5vw,2.75rem)] leading-none">
+    // No .panel here: this now sits inside a .bezel-core on the landing, and a
+    // panel within a bezel core is a card inside a card inside a card.
+    <div ref={ref} className="p-6 sm:p-7">
+      <p className="field-label">Balance</p>
+      <p className="figure-lg mt-3 text-[clamp(1.875rem,4.5vw,2.75rem)] leading-none text-foreground">
         <NumberFlow
           value={active ? TARGET_CENTS / 100 : 0}
           locales="en-US"
@@ -42,7 +44,7 @@ export function LedgerPanel() {
         />
       </p>
 
-      <div className="mt-8 flex flex-col divide-y divide-white/[0.06]">
+      <div className="mt-8 flex flex-col divide-y divide-hairline">
         {ROWS.map((row, i) => {
           const credit = row.amountCents > 0;
           return (
@@ -54,11 +56,11 @@ export function LedgerPanel() {
               )}
               style={{ transitionDelay: `${150 + i * 90}ms` }}
             >
-              <span className="text-muted-foreground">{row.label}</span>
+              <span className="text-body-foreground">{row.label}</span>
               <span
                 className={cn(
                   "font-mono tabular-nums",
-                  credit ? "text-success" : "text-foreground/85"
+                  credit ? "text-success" : "text-foreground"
                 )}
               >
                 {formatCurrencyFromCents(row.amountCents)}
