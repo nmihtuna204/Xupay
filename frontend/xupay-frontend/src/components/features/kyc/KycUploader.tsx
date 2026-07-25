@@ -152,7 +152,7 @@ export function KycUploader() {
                   onChange={(e) => field.onChange(e.target.files?.[0])}
                 />
               </FormControl>
-              <FormDescription>JPG, PNG, WEBP, or PDF — up to 5MB.</FormDescription>
+              <FormDescription>JPG, PNG, WEBP, or PDF. Up to 5MB.</FormDescription>
               <FormMessage />
             </FormItem>
           )}

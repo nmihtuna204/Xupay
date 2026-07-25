@@ -39,9 +39,9 @@ describe("formatPercent", () => {
 });
 
 describe("formatDate", () => {
-  it("returns an em dash for missing or invalid input", () => {
-    expect(formatDate(undefined)).toBe("—");
-    expect(formatDate("not-a-date")).toBe("—");
+  it("returns a dash for missing or invalid input", () => {
+    expect(formatDate(undefined)).toBe("-");
+    expect(formatDate("not-a-date")).toBe("-");
   });
 });
 

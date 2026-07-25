@@ -42,7 +42,7 @@ export function TransactionTable({
                 </Link>
               </TableCell>
               <TableCell className="max-w-56 truncate text-muted-foreground">
-                {tx.description || "—"}
+                {tx.description || "-"}
               </TableCell>
               <TableCell className="text-muted-foreground">{formatDate(tx.createdAt)}</TableCell>
               <TableCell>

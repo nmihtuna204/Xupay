@@ -45,7 +45,7 @@ export function TransactionDetailClient({ transactionId }: { transactionId: stri
           <DetailField label="Type" value={<span className="capitalize">{tx.type?.toLowerCase() || "transfer"}</span>} />
           <DetailField label="Date" value={formatDate(tx.createdAt)} />
           <DetailField label="Currency" value={tx.currency} />
-          <DetailField label="Description" value={tx.description || "—"} />
+          <DetailField label="Description" value={tx.description || "-"} />
         </div>
       </div>
     </>

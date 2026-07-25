@@ -36,7 +36,7 @@ export function LoginForm() {
         router.push(destination);
       },
       onError: (error) => {
-        toast.error(error.message || "Couldn't sign you in — check your credentials.");
+        toast.error(error.message || "Couldn't sign you in. Check your credentials.");
       },
     });
   }

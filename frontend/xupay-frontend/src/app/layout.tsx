@@ -9,9 +9,9 @@ import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "XuPay — Digital Wallet & Payments",
+  title: "XuPay · Digital Wallet & Payments",
   description:
-    "Ledger-accurate fintech platform: wallets, transfers, fraud detection, and compliance — built on Next.js 16 and Spring Boot.",
+    "Ledger-accurate fintech platform: wallets, transfers, fraud detection, and compliance. Built on Next.js 16 and Spring Boot.",
 };
 
 export default function RootLayout({

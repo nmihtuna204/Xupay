@@ -48,9 +48,9 @@ export function formatPercent(fraction: number, digits = 1): string {
 }
 
 export function formatDate(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
     timeStyle: "short",
@@ -58,9 +58,9 @@ export function formatDate(iso?: string): string {
 }
 
 export function formatDateShort(iso?: string): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
+  if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
 }
 
