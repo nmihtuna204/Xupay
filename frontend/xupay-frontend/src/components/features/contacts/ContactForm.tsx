@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, UserPlus } from "lucide-react";
+import { CircleNotch, UserPlus } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,7 +52,7 @@ export function ContactForm() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button>
-          <UserPlus /> Add contact
+          <UserPlus weight="light" /> Add contact
         </Button>
       </DialogTrigger>
       <DialogContent>
@@ -88,7 +88,7 @@ export function ContactForm() {
               )}
             />
             <Button type="submit" disabled={addContactMutation.isPending}>
-              {addContactMutation.isPending && <Loader2 className="animate-spin" />}
+              {addContactMutation.isPending && <CircleNotch weight="light" className="animate-spin" />}
               Add contact
             </Button>
           </form>

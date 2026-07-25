@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShieldAlert, ShieldCheck, ShieldX, Gauge } from "lucide-react";
+import { Gauge, ShieldCheck, ShieldSlash, ShieldWarning } from "@phosphor-icons/react/dist/ssr";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { ChartCard } from "@/components/features/charts/ChartCard";
@@ -73,13 +73,13 @@ export default function FraudPage() {
             <StatCard
               label="Flagged"
               value={formatCompactNumber(metrics.flagged)}
-              icon={ShieldAlert}
+              icon={ShieldWarning}
               tone="warning"
             />
             <StatCard
               label="Blocked"
               value={formatCompactNumber(metrics.blocked)}
-              icon={ShieldX}
+              icon={ShieldSlash}
               tone="critical"
             />
             <StatCard

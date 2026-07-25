@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -36,7 +36,7 @@ export function StatCard({
     <div className={cn("panel", primary ? "p-6" : "p-panel")}>
       <div className="flex items-center justify-between gap-3">
         <p className="field-label truncate">{label}</p>
-        {Icon && <Icon className="size-4 shrink-0 text-muted-foreground/70" />}
+        {Icon && <Icon weight="light" className="size-4 shrink-0 text-muted-foreground/70" />}
       </div>
       <p
         className={cn(

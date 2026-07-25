@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Save } from "lucide-react";
+import { CircleNotch, FloppyDisk } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,8 +137,8 @@ export function ProfileForm({ profile }: { profile: ProfileResponse }) {
         </div>
 
         <Button type="submit" disabled={updateMutation.isPending} className="mt-1 self-start">
-          {updateMutation.isPending ? <Loader2 className="animate-spin" /> : <Save />}
-          Save changes
+          {updateMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <FloppyDisk weight="light" />}
+          FloppyDisk changes
         </Button>
       </form>
     </Form>

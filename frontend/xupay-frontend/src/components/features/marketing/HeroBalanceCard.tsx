@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight } from "@phosphor-icons/react/dist/ssr";
 import { formatCurrencyFromCents } from "@/lib/format";
 
 /**
@@ -50,9 +50,9 @@ export function HeroBalanceCard() {
                     }`}
                   >
                     {credit ? (
-                      <ArrowDownLeft className="size-3.5" />
+                      <ArrowDownLeft weight="light" className="size-3.5" />
                     ) : (
-                      <ArrowUpRight className="size-3.5" />
+                      <ArrowUpRight weight="light" className="size-3.5" />
                     )}
                   </span>
                   {row.label}

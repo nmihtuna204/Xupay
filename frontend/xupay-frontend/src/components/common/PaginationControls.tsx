@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
 export function PaginationControls({
@@ -20,7 +20,7 @@ export function PaginationControls({
           disabled={page === 0}
           onClick={() => onPageChange(page - 1)}
         >
-          <ChevronLeft /> Previous
+          <CaretLeft weight="light" /> Previous
         </Button>
         <Button
           variant="outline"
@@ -28,7 +28,7 @@ export function PaginationControls({
           disabled={!hasNextPage}
           onClick={() => onPageChange(page + 1)}
         >
-          Next <ChevronRight />
+          Next <CaretRight weight="light" />
         </Button>
       </div>
     </div>

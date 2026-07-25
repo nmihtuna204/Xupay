@@ -1,4 +1,4 @@
-import { Snowflake } from "lucide-react";
+import { Snowflake } from "@phosphor-icons/react/dist/ssr";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrencyFromCents } from "@/lib/format";
 import type { WalletBalanceResponse } from "@/lib/api/payment-service/wallets";
@@ -10,7 +10,7 @@ export function WalletCard({ wallet }: { wallet: WalletBalanceResponse }) {
         <p className="kicker">Wallet balance</p>
         {wallet.isFrozen && (
           <Badge variant="outline" className="gap-1 border-warning/40 text-warning">
-            <Snowflake className="size-3" /> Frozen
+            <Snowflake weight="light" className="size-3" /> Frozen
           </Badge>
         )}
       </div>

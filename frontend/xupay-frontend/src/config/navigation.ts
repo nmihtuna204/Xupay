@@ -1,16 +1,16 @@
+import type { Icon as LucideIcon } from "@phosphor-icons/react";
 import {
-  LayoutDashboard,
-  Wallet,
-  ArrowLeftRight,
-  Users,
+  ArrowsLeftRight,
+  ChartBar,
+  FileX,
+  Gear,
+  Scroll,
   ShieldCheck,
-  ShieldAlert,
-  FileWarning,
-  BarChart3,
-  ScrollText,
-  Settings,
-  type LucideIcon,
-} from "lucide-react";
+  ShieldWarning,
+  SquaresFour,
+  Users,
+  Wallet,
+} from "@phosphor-icons/react/dist/ssr";
 
 export interface NavItem {
   label: string;
@@ -28,13 +28,13 @@ export interface NavGroup {
 export const mainNavigation: NavGroup[] = [
   {
     label: "Overview",
-    items: [{ label: "Dashboard", href: "/dashboard", icon: LayoutDashboard }],
+    items: [{ label: "Dashboard", href: "/dashboard", icon: SquaresFour }],
   },
   {
     label: "Money",
     items: [
       { label: "Wallets", href: "/wallets", icon: Wallet },
-      { label: "Transactions", href: "/transactions", icon: ArrowLeftRight },
+      { label: "Transactions", href: "/transactions", icon: ArrowsLeftRight },
       { label: "Contacts", href: "/contacts", icon: Users },
     ],
   },
@@ -42,21 +42,21 @@ export const mainNavigation: NavGroup[] = [
     label: "Trust & Safety",
     items: [
       { label: "KYC Verification", href: "/kyc", icon: ShieldCheck },
-      { label: "Fraud Detection", href: "/fraud", icon: ShieldAlert, mock: true },
-      { label: "Compliance / SAR", href: "/compliance", icon: FileWarning, mock: true },
+      { label: "Fraud Detection", href: "/fraud", icon: ShieldWarning, mock: true },
+      { label: "Compliance / SAR", href: "/compliance", icon: FileX, mock: true },
     ],
   },
   {
     label: "Insights",
     items: [
-      { label: "Analytics", href: "/analytics", icon: BarChart3, mock: true },
-      { label: "Audit Log", href: "/audit", icon: ScrollText, mock: true },
+      { label: "Analytics", href: "/analytics", icon: ChartBar, mock: true },
+      { label: "Audit Log", href: "/audit", icon: Scroll, mock: true },
     ],
   },
 ];
 
 export const userMenuItems: NavItem[] = [
-  { label: "Settings", href: "/settings", icon: Settings },
+  { label: "Gear", href: "/settings", icon: Gear },
 ];
 
 export function isNavItemActive(item: NavItem, pathname: string): boolean {

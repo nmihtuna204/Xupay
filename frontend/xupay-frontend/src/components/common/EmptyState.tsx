@@ -1,5 +1,5 @@
-import type { LucideIcon } from "lucide-react";
-import { Inbox } from "lucide-react";
+import type { Icon as LucideIcon } from "@phosphor-icons/react";
+import { Tray } from "@phosphor-icons/react/dist/ssr";
 import { cn } from "@/lib/utils";
 
 /**
@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export function EmptyState({
   title,
   description,
-  icon: Icon = Inbox,
+  icon: Icon = Tray,
   action,
   className,
 }: {
@@ -31,7 +31,7 @@ export function EmptyState({
       )}
     >
       <div className="flex size-10 items-center justify-center rounded-full bg-white/[0.04]">
-        <Icon className="size-[18px] text-muted-foreground" />
+        <Icon weight="light" className="size-[18px] text-muted-foreground" />
       </div>
       <p className="mt-4 text-sm font-medium">{title}</p>
       {description && (

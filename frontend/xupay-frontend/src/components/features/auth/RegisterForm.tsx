@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { CircleNotch } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -149,7 +149,7 @@ export function RegisterForm() {
         />
 
         <Button type="submit" size="lg" className="mt-2 w-full" disabled={registerMutation.isPending}>
-          {registerMutation.isPending && <Loader2 className="animate-spin" />}
+          {registerMutation.isPending && <CircleNotch weight="light" className="animate-spin" />}
           Create account
         </Button>
       </form>

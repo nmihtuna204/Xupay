@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, User as UserIcon } from "lucide-react";
+import { Gear, SignOut, User as UserIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -65,17 +65,17 @@ export function Topbar() {
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/settings">
-              <UserIcon /> Profile
+              <UserIcon weight="light" /> Profile
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings">
-              <Settings /> Settings
+              <Gear weight="light" /> Gear
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem variant="destructive" onSelect={() => logout()}>
-            <LogOut /> Log out
+            <SignOut weight="light" /> Log out
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

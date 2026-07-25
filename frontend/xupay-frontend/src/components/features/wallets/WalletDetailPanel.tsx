@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Snowflake, Sun } from "lucide-react";
+import { Copy, Snowflake, Sun } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { Button } from "@/components/ui/button";
@@ -54,7 +54,7 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
           </p>
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
             <button onClick={copyId} className="flex items-center gap-1 hover:text-foreground">
-              {wallet.walletId} <Copy className="size-3" />
+              {wallet.walletId} <Copy weight="light" className="size-3" />
             </button>
             <span>·</span>
             <span>{wallet.currency}</span>
@@ -73,11 +73,11 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
               <Button variant="outline" size="sm">
                 {wallet.isFrozen ? (
                   <>
-                    <Sun /> Unfreeze
+                    <Sun weight="light" /> Unfreeze
                   </>
                 ) : (
                   <>
-                    <Snowflake /> Freeze
+                    <Snowflake weight="light" /> Freeze
                   </>
                 )}
               </Button>

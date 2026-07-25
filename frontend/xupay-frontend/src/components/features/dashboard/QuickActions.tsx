@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { Send, PiggyBank, Banknote, ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Money, PaperPlaneTilt, PiggyBank } from "@phosphor-icons/react/dist/ssr";
 
 const ACTIONS = [
-  { href: "/payments/transfer", label: "Send money", icon: Send },
+  { href: "/payments/transfer", label: "PaperPlaneTilt money", icon: PaperPlaneTilt },
   { href: "/payments/deposit", label: "Deposit", icon: PiggyBank },
-  { href: "/payments/withdraw", label: "Withdraw", icon: Banknote },
+  { href: "/payments/withdraw", label: "Withdraw", icon: Money },
 ];
 
 export function QuickActions() {
@@ -20,7 +20,7 @@ export function QuickActions() {
             <action.icon className="size-4 text-muted-foreground" />
             <span className="text-sm font-medium">{action.label}</span>
           </span>
-          <ArrowUpRight className="size-4 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
+          <ArrowUpRight weight="light" className="size-4 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
         </Link>
       ))}
     </div>

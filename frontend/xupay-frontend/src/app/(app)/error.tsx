@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { RotateCcw, TriangleAlert } from "lucide-react";
+import { ArrowCounterClockwise, Warning } from "@phosphor-icons/react/dist/ssr";
 import { Button } from "@/components/ui/button";
 
 /**
@@ -29,7 +29,7 @@ export default function AppError({
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center px-6 text-center">
       <div className="flex size-10 items-center justify-center rounded-full bg-error/10">
-        <TriangleAlert className="size-[18px] text-error" />
+        <Warning weight="light" className="size-[18px] text-error" />
       </div>
       <h1 className="mt-4 text-base font-semibold">Something went wrong</h1>
       <p className="mt-1.5 max-w-[44ch] text-sm leading-relaxed text-muted-foreground">
@@ -43,7 +43,7 @@ export default function AppError({
       )}
       <div className="mt-6 flex items-center gap-2">
         <Button onClick={() => unstable_retry()}>
-          <RotateCcw /> Try again
+          <ArrowCounterClockwise weight="light" /> Try again
         </Button>
         <Button variant="outline" asChild>
           <Link href="/dashboard">Back to dashboard</Link>

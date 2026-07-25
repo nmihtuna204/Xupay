@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Loader2, Banknote } from "lucide-react";
+import { CircleNotch, Money } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +94,7 @@ export function WithdrawForm() {
         />
 
         <Button type="submit" variant="outline" disabled={withdrawMutation.isPending} className="mt-1">
-          {withdrawMutation.isPending ? <Loader2 className="animate-spin" /> : <Banknote />}
+          {withdrawMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <Money weight="light" />}
           Withdraw
         </Button>
       </form>

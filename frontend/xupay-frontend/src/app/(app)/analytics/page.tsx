@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Activity, ArrowLeftRight, TrendingUp, Users } from "lucide-react";
+import { ArrowsLeftRight, Pulse, TrendUp, Users } from "@phosphor-icons/react/dist/ssr";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatCard } from "@/components/common/StatCard";
 import { ChartCard } from "@/components/features/charts/ChartCard";
@@ -38,12 +38,12 @@ export default function AnalyticsPage() {
             <StatCard
               label="Total volume"
               value={formatCompactCurrencyFromCents(data.totalVolumeCents)}
-              icon={TrendingUp}
+              icon={TrendUp}
             />
             <StatCard
               label="Transactions"
               value={formatCompactNumber(data.transactionCount)}
-              icon={ArrowLeftRight}
+              icon={ArrowsLeftRight}
             />
             <StatCard
               label="Active users"
@@ -53,7 +53,7 @@ export default function AnalyticsPage() {
             <StatCard
               label="Avg. transaction"
               value={formatCurrencyFromCents(data.avgTransactionCents)}
-              icon={Activity}
+              icon={Pulse}
             />
           </>
         )}

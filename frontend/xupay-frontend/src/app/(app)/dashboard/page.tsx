@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight } from "@phosphor-icons/react/dist/ssr";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { WalletCard } from "@/components/features/wallets/WalletCard";
 import { QuickActions } from "@/components/features/dashboard/QuickActions";
@@ -44,7 +44,7 @@ export default function DashboardPage() {
           <p className="kicker">Recent transactions</p>
           <Button variant="ghost" size="sm" asChild>
             <Link href="/transactions">
-              View all <ArrowRight />
+              View all <ArrowRight weight="light" />
             </Link>
           </Button>
         </div>

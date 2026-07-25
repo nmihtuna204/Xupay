@@ -2,7 +2,7 @@
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
+import { CheckCircle, CircleNotch, Info, Warning, XCircle } from "@phosphor-icons/react/dist/ssr"
 
 // XuPay is light-first. Sonner reads the theme from next-themes now that the
 // provider is wired, so toasts follow the page instead of being pinned dark.
@@ -14,19 +14,19 @@ const Toaster = ({ ...props }: ToasterProps) => {
       className="toaster group"
       icons={{
         success: (
-          <CircleCheckIcon className="size-4" />
+          <CheckCircle weight="light" className="size-4" />
         ),
         info: (
-          <InfoIcon className="size-4" />
+          <Info weight="light" className="size-4" />
         ),
         warning: (
-          <TriangleAlertIcon className="size-4" />
+          <Warning weight="light" className="size-4" />
         ),
         error: (
-          <OctagonXIcon className="size-4" />
+          <XCircle weight="light" className="size-4" />
         ),
         loading: (
-          <Loader2Icon className="size-4 animate-spin" />
+          <CircleNotch weight="light" className="size-4 animate-spin" />
         ),
       }}
       style={

@@ -2,7 +2,7 @@
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, Upload } from "lucide-react";
+import { CircleNotch, UploadSimple } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,7 +68,7 @@ export function KycUploader() {
       toast.success("Document submitted for review");
       form.reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Upload failed");
+      toast.error(error instanceof Error ? error.message : "UploadSimple failed");
     }
   }
 
@@ -159,7 +159,7 @@ export function KycUploader() {
         />
 
         <Button type="submit" disabled={uploadMutation.isPending} className="mt-1">
-          {uploadMutation.isPending ? <Loader2 className="animate-spin" /> : <Upload />}
+          {uploadMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <UploadSimple weight="light" />}
           Submit for review
         </Button>
       </form>

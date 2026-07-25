@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Send, Trash2 } from "lucide-react";
+import { PaperPlaneTilt, Trash } from "@phosphor-icons/react/dist/ssr";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -42,7 +42,7 @@ export function ContactList({ contacts }: { contacts: ContactResponse[] }) {
           <div className="flex gap-1">
             <Button variant="ghost" size="icon-sm" asChild>
               <Link href={`/payments/transfer?to=${contact.contactUserId}`}>
-                <Send />
+                <PaperPlaneTilt weight="light" />
               </Link>
             </Button>
             <Button
@@ -55,7 +55,7 @@ export function ContactList({ contacts }: { contacts: ContactResponse[] }) {
                 })
               }
             >
-              <Trash2 />
+              <Trash weight="light" />
             </Button>
           </div>
         </div>

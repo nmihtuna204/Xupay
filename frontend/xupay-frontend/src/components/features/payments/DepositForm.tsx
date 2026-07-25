@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
-import { Loader2, PiggyBank } from "lucide-react";
+import { CircleNotch, PiggyBank } from "@phosphor-icons/react/dist/ssr";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -94,7 +94,7 @@ export function DepositForm() {
         />
 
         <Button type="submit" disabled={depositMutation.isPending} className="mt-1">
-          {depositMutation.isPending ? <Loader2 className="animate-spin" /> : <PiggyBank />}
+          {depositMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <PiggyBank weight="light" />}
           Deposit
         </Button>
       </form>

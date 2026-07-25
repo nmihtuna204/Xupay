@@ -1,4 +1,4 @@
-import { ArrowUpRight, Check } from "lucide-react";
+import { ArrowUpRight, Check } from "@phosphor-icons/react/dist/ssr";
 import { formatCurrencyFromCents } from "@/lib/format";
 
 /**
@@ -41,7 +41,7 @@ export default function DesignPreviewPage() {
 
         <div className="mt-9 flex flex-wrap items-center gap-3">
           <button className="accent-gradient-fill inline-flex items-center gap-2 rounded-full px-7 py-3.5 text-sm font-medium shadow-[var(--shadow-float)]">
-            Open an account <ArrowUpRight className="size-4" />
+            Open an account <ArrowUpRight weight="light" className="size-4" />
           </button>
           <button className="inline-flex items-center rounded-full border border-hairline-strong bg-surface px-7 py-3.5 text-sm font-medium text-foreground shadow-[var(--shadow-soft)]">
             See live rates
@@ -124,7 +124,7 @@ export default function DesignPreviewPage() {
           </div>
           <div className="float-card float-card--slow -rotate-1 flex items-center gap-2 px-5 py-4">
             <span className="flex size-5 items-center justify-center rounded-full bg-success/12">
-              <Check className="size-3 text-success" />
+              <Check weight="light" className="size-3 text-success" />
             </span>
             <p className="text-sm font-medium text-foreground">Settled in 1.4s</p>
           </div>

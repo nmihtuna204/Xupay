@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { FileText } from "@phosphor-icons/react/dist/ssr";
 import { EmptyState } from "@/components/common/EmptyState";
 import { KycStatusBadge } from "./KycStatusBadge";
 import { formatDateShort } from "@/lib/format";
@@ -28,7 +28,7 @@ export function DocumentList({ documents }: { documents: KycDocumentResponse[] }
         <div key={doc.id} className="panel flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
             <span className="flex size-9 items-center justify-center rounded-lg bg-surface-hover">
-              <FileText className="size-4 text-muted-foreground" />
+              <FileText weight="light" className="size-4 text-muted-foreground" />
             </span>
             <div>
               <p className="text-sm font-medium">{DOCUMENT_LABEL[doc.documentType] ?? doc.documentType}</p>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Menu } from "lucide-react";
+import { List } from "@phosphor-icons/react/dist/ssr";
 import {
   Sheet,
   SheetContent,
@@ -28,7 +28,7 @@ export function MobileNav() {
         className="flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-surface-hover hover:text-foreground md:hidden"
         aria-label="Open navigation menu"
       >
-        <Menu className="size-5" />
+        <List weight="light" className="size-5" />
       </SheetTrigger>
       <SheetContent side="left" className="p-0">
         <VisuallyHidden.Root>
