@@ -37,7 +37,7 @@ export default function AppError({
         failing, the service may be briefly unavailable.
       </p>
       {error.digest && (
-        <p className="mt-3 font-mono text-xs text-muted-foreground/60">
+        <p className="mt-3 font-mono text-xs text-muted-foreground">
           Reference {error.digest}
         </p>
       )}

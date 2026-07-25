@@ -15,7 +15,7 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 border-b border-white/[0.06] pb-5">
+    <div className="mb-6 border-b border-hairline pb-5">
       <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
           <h1 className="h-page">{title}</h1>

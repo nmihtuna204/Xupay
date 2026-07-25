@@ -11,7 +11,7 @@ export function Sidebar({ className }: { className?: string }) {
   return (
     <nav
       className={cn(
-        "flex h-full w-[220px] flex-col border-r border-sidebar-border bg-sidebar px-3 py-5",
+        "flex h-full w-[220px] shrink-0 flex-col border-r border-hairline bg-sidebar px-3 py-5",
         className
       )}
     >
@@ -25,7 +25,7 @@ export function Sidebar({ className }: { className?: string }) {
       <div className="mt-7 flex flex-1 flex-col gap-6 overflow-y-auto">
         {mainNavigation.map((group) => (
           <div key={group.label}>
-            <p className="px-3 pb-2 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground/70">
+            <p className="px-3 pb-2 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-muted-foreground">
               {group.label}
             </p>
             <ul className="flex flex-col gap-0.5">
@@ -38,12 +38,14 @@ export function Sidebar({ className }: { className?: string }) {
                       href={item.href}
                       data-active={active}
                       className={cn(
-                        "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-sidebar-foreground/60 transition-colors hover:text-sidebar-foreground",
-                        active && "bg-white/[0.04] text-sidebar-foreground"
+                        "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors duration-300 hover:bg-surface-2 hover:text-foreground",
+                        active && "bg-secondary text-foreground"
                       )}
                     >
                       {active && (
-                        <span className="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-primary" />
+                        // A gradient sliver rather than a solid bar: the one
+                        // place the brand ramp appears in the app chrome.
+                        <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-[linear-gradient(180deg,var(--grad-fill-from),var(--grad-fill-to))]" />
                       )}
                       <Icon className="size-4 shrink-0" />
                       {item.label}

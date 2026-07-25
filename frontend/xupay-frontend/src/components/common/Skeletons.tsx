@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 /** Mirrors PageHeader: title, description line, divider. */
 export function PageHeaderSkeleton({ withAction = false }: { withAction?: boolean }) {
   return (
-    <div className="mb-6 border-b border-white/[0.06] pb-5">
+    <div className="mb-6 border-b border-hairline pb-5">
       <div className="flex items-start justify-between gap-6">
         <div className="space-y-2">
           <Skeleton className="h-6 w-44" />
@@ -78,7 +78,7 @@ export function TableSkeleton({
   const widths = ["w-20", "w-40", "w-28", "w-24", "w-24", "w-16"];
   return (
     <div className="panel overflow-hidden">
-      <div className="flex items-center gap-6 border-b border-white/[0.06] px-4 py-3">
+      <div className="flex items-center gap-6 border-b border-hairline px-4 py-3">
         {Array.from({ length: columns }).map((_, c) => (
           <Skeleton
             key={c}
@@ -89,7 +89,7 @@ export function TableSkeleton({
       {Array.from({ length: rows }).map((_, r) => (
         <div
           key={r}
-          className="flex items-center gap-6 border-b border-white/[0.05] px-4 py-3.5 last:border-0"
+          className="flex items-center gap-6 border-b border-hairline px-4 py-3.5 last:border-0"
         >
           {Array.from({ length: columns }).map((_, c) => (
             <Skeleton

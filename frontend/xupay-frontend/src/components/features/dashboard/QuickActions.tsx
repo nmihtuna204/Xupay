@@ -20,7 +20,7 @@ export function QuickActions() {
             <action.icon className="size-4 text-muted-foreground" />
             <span className="text-sm font-medium">{action.label}</span>
           </span>
-          <ArrowUpRight weight="light" className="size-4 text-muted-foreground/40 transition-colors group-hover:text-foreground" />
+          <ArrowUpRight weight="light" className="size-4 text-muted-foreground transition-colors group-hover:text-foreground" />
         </Link>
       ))}
     </div>

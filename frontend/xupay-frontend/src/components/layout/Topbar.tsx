@@ -32,7 +32,7 @@ export function Topbar() {
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "??";
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border px-4 sm:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-hairline bg-surface px-4 sm:px-6">
       <div className="flex items-center gap-3">
         <MobileNav />
         {/* Breadcrumb: brand · current section. */}
@@ -40,7 +40,7 @@ export function Topbar() {
           <span className="hidden text-muted-foreground sm:inline">XuPay</span>
           {section && (
             <>
-              <span className="hidden text-muted-foreground/40 sm:inline">/</span>
+              <span className="hidden text-muted-foreground sm:inline">/</span>
               <span className="font-medium">{section}</span>
             </>
           )}
