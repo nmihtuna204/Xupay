@@ -3,6 +3,12 @@ import Image from "next/image";
 import { ArrowUpRight } from "@phosphor-icons/react/dist/ssr";
 import { Reveal } from "@/components/common/Reveal";
 import { HeroFloatCards } from "@/components/features/marketing/HeroFloatCards";
+import {
+  FloatCard,
+  FloatCardFigure,
+  FloatCardLabel,
+} from "@/components/features/marketing/FloatCard";
+import { formatCurrencyFromCents } from "@/lib/format";
 import { TransferQuoteCard } from "@/components/features/marketing/TransferQuoteCard";
 import { LedgerPanel } from "@/components/features/marketing/LedgerPanel";
 
@@ -91,6 +97,17 @@ function HeroSection() {
         sizes="100vw"
         placeholder="blur"
         className="pointer-events-none -z-10 object-cover"
+      />
+      {/*
+        Dot field on top of the aurora. The artwork's own constellation sits
+        inside the image and reads as flat at this scale; this layer is masked
+        to an arc that keeps density in the empty band beneath the headline and
+        subtracts a clear ellipse where the type sits, so it adds depth to the
+        gap without touching heading contrast.
+      */}
+      <div
+        aria-hidden
+        className="dot-field--arc pointer-events-none absolute inset-0 -z-10"
       />
       <HeroFloatCards />
 
@@ -223,20 +240,46 @@ function FraudSection() {
           such rather than dropped: unlabelled specifics on a marketing page
           read as real claims, which is a promise the project has not measured.
         */}
-        <Reveal as="div" delay={200} className="mt-16 flex flex-wrap items-end justify-center gap-x-16 gap-y-10">
-          <div>
-            <p className="figure-lg text-[clamp(2.5rem,6vw,4rem)] leading-none text-primary-accent">
+        {/*
+          The figures were bare type on the section ground, which left this
+          block reading as the flattest thing on the page. Seating them in
+          glass gives the section a foreground plane without adding content.
+        */}
+        <Reveal as="div" delay={200} className="mt-16 flex flex-wrap items-stretch justify-center gap-5">
+          <div className="glass-card px-9 py-7">
+            <p className="figure-lg text-[clamp(2.25rem,5vw,3.5rem)] leading-none text-primary-accent">
               &lt;40ms
             </p>
             <p className="mt-3 text-sm text-muted-foreground">Target scoring latency</p>
           </div>
-          <div>
-            <p className="figure-lg text-[clamp(2.5rem,6vw,4rem)] leading-none text-foreground">
+          <div className="glass-card px-9 py-7">
+            <p className="figure-lg text-[clamp(2.25rem,5vw,3.5rem)] leading-none text-foreground">
               18.4K
             </p>
             <p className="mt-3 text-sm text-muted-foreground">Sample daily volume</p>
           </div>
         </Reveal>
+
+        {/* Two drifting outcome chips, so the section has the same foreground
+            layer as the hero rather than stopping at the headline. */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
+          <FloatCard rotate={-3} duration={10} delay={-1} className="left-[4%] top-[30%]">
+            <div className="flex items-center gap-2.5">
+              <span className="size-2 shrink-0 rounded-full bg-warning" />
+              <p className="whitespace-nowrap text-sm font-medium text-foreground">
+                3 held for review
+              </p>
+            </div>
+          </FloatCard>
+          <FloatCard rotate={3} duration={12} delay={-5} className="right-[5%] top-[24%]">
+            <div className="flex items-center gap-2.5">
+              <span className="size-2 shrink-0 rounded-full bg-error" />
+              <p className="whitespace-nowrap text-sm font-medium text-foreground">
+                1 blocked
+              </p>
+            </div>
+          </FloatCard>
+        </div>
         <Reveal as="p" delay={260} className="mt-10 text-xs text-muted-foreground">
           Figures are illustrative of the scoring pipeline, not measured service levels.
         </Reveal>
@@ -313,6 +356,26 @@ function ClosingSection() {
   return (
     <section className="mesh-bg--rose relative overflow-hidden px-6 pb-16 pt-28 sm:pt-32">
       <div aria-hidden className="bg-rings pointer-events-none absolute inset-0 opacity-70" />
+      {/* Dots converge on the rings so the closing has depth behind the CTA
+          rather than type floating on a flat ground. */}
+      <div aria-hidden className="dot-field pointer-events-none absolute inset-0 opacity-80" />
+
+      {/* One card, kept well clear of the centred headline column. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
+        <FloatCard rotate={-3} duration={11} delay={-3} className="left-[7%] top-[38%]">
+          <FloatCardFigure>{formatCurrencyFromCents(1_184_792_000)}</FloatCardFigure>
+          <FloatCardLabel>Reconciled to the cent</FloatCardLabel>
+        </FloatCard>
+        <FloatCard rotate={3} duration={13} delay={-7} className="right-[8%] top-[46%]">
+          <div className="flex items-center gap-2.5">
+            <span className="size-2 shrink-0 rounded-full bg-success" />
+            <p className="whitespace-nowrap text-sm font-medium text-foreground">
+              No drift, no duplicates
+            </p>
+          </div>
+        </FloatCard>
+      </div>
+
       <div className="relative mx-auto w-full max-w-[1200px] text-center">
         <Reveal as="h2" className="display-hero text-[clamp(2.5rem,6.5vw,5rem)]">
           <span className="block text-foreground">Move money</span>

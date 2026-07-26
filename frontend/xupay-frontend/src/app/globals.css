@@ -39,8 +39,21 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-body-foreground: var(--body-foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /*
+   * Explicit fallbacks, because NEITHER Geist face ships U+20AB - the dong
+   * sign. Verified against both cmaps: Geist Sans and Geist Mono have U+0024
+   * and no U+20AB. With no stated fallback the browser picked its own, which
+   * rendered the symbol as a wrong glyph next to otherwise correct digits.
+   *
+   * Font fallback is per glyph, not per run, so only the currency mark drops
+   * through to Consolas / Segoe UI - every digit still comes from Geist and
+   * stays tabular. The formatter is untouched: it always emitted U+20AB
+   * correctly and the bug was purely coverage.
+   */
+  --font-sans: var(--font-geist-sans), "Segoe UI", "Helvetica Neue", Arial,
+    "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), Consolas, "DejaVu Sans Mono",
+    "Courier New", ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -367,16 +380,20 @@
    * thing to go under prefers-reduced-motion (see the bottom of this file).
    */
   .float-card {
+    /* Tilt lives in a variable so the drift keyframe can compose on top of it.
+       Setting transform in the keyframe alone would silently discard any
+       rotation class, which is why the cards previously sat square. */
+    --float-rotate: 0deg;
+    transform: rotate(var(--float-rotate));
     background: var(--glass-strong);
     backdrop-filter: blur(16px) saturate(150%);
     -webkit-backdrop-filter: blur(16px) saturate(150%);
     border: 1px solid var(--glass-edge);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-float);
-    animation: float-drift 7s ease-in-out infinite;
+    animation: float-drift 9s ease-in-out infinite;
+    will-change: transform;
   }
-  .float-card--slow { animation-duration: 9s; }
-  .float-card--delayed { animation-delay: -3s; }
 
   /*
    * DOUBLE-BEZEL (soft-skill nested enclosure). A premium container is not a
@@ -516,6 +533,26 @@
   }
 
   /*
+   * Arc variant for the hero. Two masks intersect: a wide ellipse anchored
+   * below the headline, minus a clear ellipse where the headline itself sits.
+   * The subtraction is the point - it keeps density in the empty band under
+   * the type while leaving the type on clean ground, so the field adds depth
+   * without touching heading contrast.
+   */
+  .dot-field--arc {
+    background-image: radial-gradient(circle, var(--dot-color) 1.3px, transparent 1.3px);
+    background-size: 26px 26px;
+    -webkit-mask-image:
+      radial-gradient(78% 62% at 50% 78%, #000 8%, transparent 76%),
+      radial-gradient(46% 30% at 50% 34%, transparent 62%, #000 88%);
+    mask-image:
+      radial-gradient(78% 62% at 50% 78%, #000 8%, transparent 76%),
+      radial-gradient(46% 30% at 50% 34%, transparent 62%, #000 88%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+
+  /*
    * The product-UI container title. Not .display: that carries the marketing
    * headline's cinematic weight and negative tracking, which reads as shouting
    * on a dense tool screen. This is the Linear/Stripe register.
@@ -624,8 +661,8 @@
 }
 
 @keyframes float-drift {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%, 100% { transform: rotate(var(--float-rotate)) translateY(0); }
+  50% { transform: rotate(var(--float-rotate)) translateY(-11px); }
 }
 
 /* Reveal-on-scroll: a `.reveal` element rises+fades in when it enters view.
@@ -675,11 +712,16 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-  /* Explicit, not just duration-clamped: the drifting cards must actually
-     stop and sit still, not jitter at 0.001ms. */
+  /* Explicit, not just duration-clamped: the drifting cards must actually stop
+     and sit still, not jitter at 0.001ms.
+
+     The tilt is deliberately kept. A static rotation is composition, not
+     motion, and reduced-motion asks for less movement rather than a different
+     layout - flattening the cards would change the design for these users
+     instead of calming it. Only the drift is removed. */
   .float-card {
     animation: none !important;
-    transform: none !important;
+    transform: rotate(var(--float-rotate)) !important;
   }
   .reveal-ready .reveal {
     opacity: 1;

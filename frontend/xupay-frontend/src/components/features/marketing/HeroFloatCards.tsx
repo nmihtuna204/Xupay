@@ -1,63 +1,96 @@
-import { ArrowDownLeft, Check, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import { ArrowDownLeft, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 import { formatCurrencyFromCents } from "@/lib/format";
+import { FloatCard, FloatCardFigure, FloatCardLabel } from "./FloatCard";
 
 /**
- * The mini-cards that orbit the hero - the single strongest signature of the
- * Agio reference. Glass, tilted a degree or two off-grid, drifting slowly.
+ * The cards orbiting the hero.
  *
- * They are decoration, so they are aria-hidden and pointer-events-none: a
- * screen reader should hear the headline and the CTA, not four numbers with no
- * context. They are also hidden below lg, where they would either collide with
- * the headline or force the hero past the fold.
+ * Positions are deliberately uneven and phases are deliberately unequal: four
+ * cards at matching offsets and one shared animation read as a diagram, not as
+ * depth. Each sits in the outer gutter, clear of the centred headline column,
+ * because the one thing this layer must not do is cross the type.
  *
- * Positions are deliberately uneven. A symmetrical ring of four reads as a
- * diagram; an uneven scatter reads as depth.
+ * Density steps with the viewport rather than switching off. Two cards from
+ * md, four from lg. Below md there is no gutter left to place them in without
+ * crossing the headline, so they stay out entirely - a cluttered hero costs
+ * more than a missing flourish.
  */
 export function HeroFloatCards() {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
-      {/* Upper left - an incoming credit. */}
-      <div className="float-card absolute left-[3%] top-[22%] -rotate-3 px-4 py-3 xl:left-[7%]">
+    <div aria-hidden className="pointer-events-none absolute inset-0 hidden md:block">
+      {/* Upper left, an incoming credit. Shown from md. */}
+      <FloatCard
+        rotate={-3}
+        duration={9}
+        delay={0}
+        className="left-[2%] top-[20%] xl:left-[6%]"
+      >
         <div className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center rounded-full bg-success/12">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-success/12">
             <ArrowDownLeft weight="light" className="size-4 text-success" />
           </span>
           <div>
-            <p className="font-mono text-sm tabular-nums text-foreground">
-              {formatCurrencyFromCents(250_000_000)}
-            </p>
-            <p className="field-label mt-0.5">Salary deposit</p>
+            <FloatCardFigure>{formatCurrencyFromCents(250_000_000)}</FloatCardFigure>
+            <FloatCardLabel>Salary deposit</FloatCardLabel>
           </div>
         </div>
-      </div>
+      </FloatCard>
 
-      {/* Lower left - the ledger claim, stated as a number. */}
-      <div className="float-card float-card--slow absolute left-[6%] top-[63%] rotate-2 px-4 py-3 xl:left-[11%]">
-        <p className="font-mono text-sm tabular-nums text-foreground">0.00 drift</p>
-        <p className="field-label mt-0.5">Double-entry reconciled</p>
-      </div>
-
-      {/* Upper right - risk scoring. */}
-      <div className="float-card float-card--delayed absolute right-[4%] top-[30%] rotate-3 px-4 py-3 xl:right-[8%]">
-        <div className="flex items-center gap-3">
-          <span className="flex size-8 items-center justify-center rounded-full bg-primary/10">
-            <ShieldCheck weight="light" className="size-4 text-primary-accent" />
-          </span>
-          <div>
-            <p className="font-mono text-sm tabular-nums text-foreground">Risk 04 / 100</p>
-            <p className="field-label mt-0.5">Scored before send</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Lower right - settlement confirmation. */}
-      <div className="float-card absolute right-[7%] top-[68%] -rotate-2 px-4 py-3 xl:right-[12%]">
+      {/* Lower right, settlement. Shown from md so the pair is diagonal. */}
+      <FloatCard
+        rotate={-2}
+        duration={11}
+        delay={-4}
+        className="right-[3%] top-[66%] xl:right-[9%]"
+      >
         <div className="flex items-center gap-2.5">
-          <span className="flex size-6 items-center justify-center rounded-full bg-success/12">
-            <Check weight="light" className="size-3.5 text-success" />
+          <span className="relative flex size-2 shrink-0">
+            <span className="absolute inline-flex size-full rounded-full bg-success/60" />
+            <span className="relative inline-flex size-2 rounded-full bg-success" />
           </span>
-          <p className="text-sm font-medium text-foreground">Settled</p>
+          <p className="whitespace-nowrap text-sm font-medium text-foreground">
+            Settles instantly
+          </p>
         </div>
+      </FloatCard>
+
+      {/* The remaining pair only appears once there is real gutter for it. */}
+      <div className="hidden lg:block">
+        {/* Lower left, the conversion card the reference leads with. */}
+        <FloatCard
+          rotate={2}
+          duration={10}
+          delay={-6}
+          className="left-[5%] top-[62%] xl:left-[10%]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[color-mix(in_oklab,var(--grad-text-from)_14%,transparent)]">
+              <span className="font-mono text-xs font-medium text-primary-accent">₫</span>
+            </span>
+            <div>
+              <FloatCardFigure>1 USD = 26,145</FloatCardFigure>
+              <FloatCardLabel>USD to VND</FloatCardLabel>
+            </div>
+          </div>
+        </FloatCard>
+
+        {/* Upper right, risk scoring. */}
+        <FloatCard
+          rotate={3}
+          duration={12}
+          delay={-2}
+          className="right-[3%] top-[28%] xl:right-[7%]"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
+              <ShieldCheck weight="light" className="size-4 text-primary-accent" />
+            </span>
+            <div>
+              <FloatCardFigure>Fraud score: low</FloatCardFigure>
+              <FloatCardLabel>Scored before send</FloatCardLabel>
+            </div>
+          </div>
+        </FloatCard>
       </div>
     </div>
   );
