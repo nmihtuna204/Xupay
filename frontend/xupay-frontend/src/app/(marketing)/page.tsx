@@ -239,11 +239,10 @@ function FraudSection() {
           Illustrative figures, not measured production numbers. Labelled as
           such rather than dropped: unlabelled specifics on a marketing page
           read as real claims, which is a promise the project has not measured.
-        */}
-        {/*
-          The figures were bare type on the section ground, which left this
-          block reading as the flattest thing on the page. Seating them in
-          glass gives the section a foreground plane without adding content.
+
+          They were bare type on the section ground, which left this block the
+          flattest thing on the page. Seating them in glass gives the section a
+          foreground plane without inventing extra content to fill it.
         */}
         <Reveal as="div" delay={200} className="mt-16 flex flex-wrap items-stretch justify-center gap-5">
           <div className="glass-card px-9 py-7">
@@ -360,7 +359,8 @@ function ClosingSection() {
           rather than type floating on a flat ground. */}
       <div aria-hidden className="dot-field pointer-events-none absolute inset-0 opacity-80" />
 
-      {/* One card, kept well clear of the centred headline column. */}
+      {/* Two cards, placed in the outer gutters and well clear of the centred
+          headline column so the CTA never competes with them. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 hidden lg:block">
         <FloatCard rotate={-3} duration={11} delay={-3} className="left-[7%] top-[38%]">
           <FloatCardFigure>{formatCurrencyFromCents(1_184_792_000)}</FloatCardFigure>
