@@ -56,7 +56,7 @@ export function RegisterForm() {
   return (
     <Form {...form}>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Create your account</h1>
+        <h1 className="text-[1.75rem] font-normal leading-tight tracking-[-0.03em]">Create your account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Start sending and receiving money in minutes.
         </p>

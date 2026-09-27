@@ -5,19 +5,18 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 /**
  * Theme wiring.
  *
- * The app previously hardcoded class="dark" on <html>. It is now light-first:
- * next-themes owns the class, defaults to light, and does not follow the system
- * preference, because the dark token set is parked rather than shipped (see the
- * header of globals.css) and silently handing a system-dark visitor an
- * unaudited theme would be worse than giving everyone the light one.
- *
- * Flip enableSystem back on once the dark pass is done.
+ * The product is dark-only (docs/design/spec.md), and the tokens live in
+ * :root, so no class is needed to get the palette. next-themes still owns
+ * <html>: forcing "dark" puts the .dark class there, which is what the shadcn
+ * primitives' dark: variants and the sonner toaster key off, and it sets
+ * color-scheme so native controls (date pickers, scrollbars) render dark too.
  */
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
       attribute="class"
-      defaultTheme="light"
+      forcedTheme="dark"
+      defaultTheme="dark"
       enableSystem={false}
       disableTransitionOnChange
     >

@@ -5,34 +5,28 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * XuPay design system - "Agio light-pastel".
+ * XuPay design system - "dark glass". Full spec: docs/design/spec.md.
  *
- * Light-first: a warm near-white base lifted by a very soft pastel mesh
- * (pink -> lavender -> mint), floating glass cards, and a violet->blue->mint
- * brand gradient. Depth comes from translucency and tinted shadows, never from
- * heavy borders or black drop shadows.
+ * A near-black ground with a faint masked grid, glass rings with chromatic
+ * edges behind the hero, and an indigo -> violet brand light. Depth comes from
+ * light (indigo blooms, lit top edges on glass) rather than from shadows,
+ * which disappear on black anyway.
  *
- * THE ONE RULE THAT KEEPS THIS SYSTEM HONEST
- * A pastel ramp cannot serve text, fills and decoration with the same values:
- * mint (#5ce0c0) scores 1.58:1 on near-white, so it is unreadable as type and
- * unusable behind white label text. The brand gradient therefore exists in
- * three calibrated ranges, and they are not interchangeable:
+ * TWO SURFACES, NOT INTERCHANGEABLE
+ *   .panel       opaque --surface. Every table, form and app screen. Money on
+ *                translucent glass over a lit ground is illegible, so data
+ *                never sits on glass.
+ *   .glass-*     translucent white/3 + backdrop blur. Marketing and auth only,
+ *                where there is little dense data and the light behind the
+ *                glass is the point.
  *
- *   --grad-deco-*   full pastel range, mint included. Decoration only:
- *                   mesh, glows, card tints, hairlines. Never carries text.
- *   --grad-text-*   violet -> blue -> deep teal. For DISPLAY type only
- *                   (>=24px, where WCAG asks 3:1). Measured 4.20 / 3.83 / 3.24
- *                   on --background. Never for body copy.
- *   --grad-fill-*   violet -> indigo, the dark end of the ramp. The only
- *                   gradient allowed behind white text. Measured 5.45 / 7.49
- *                   against #ffffff, so a 14px button label still passes AA.
+ * THE CTA BLOOM
+ * The violet bloom at the bottom of the primary button (--cta-bloom) measures
+ * only 2.7:1 against white. It is positioned below the label's baseline so
+ * the text always sits on the >=4.9:1 body of the gradient; do not move it up.
  *
- * Reach for the wrong one and the page looks right in a screenshot and fails
- * an accessibility audit.
- *
- * Light is the default theme. The previous near-black palette is preserved
- * under .dark so the tokens are not lost, but the components have not been
- * audited in dark yet - treat it as parked, not shipped.
+ * Dark is the only theme. <html> carries .dark (see ThemeProvider) so the
+ * dark: variants inside the shadcn primitives apply as well.
  */
 
 @theme inline {
@@ -40,20 +34,22 @@
   --color-foreground: var(--foreground);
   --color-body-foreground: var(--body-foreground);
   /*
-   * Explicit fallbacks, because NEITHER Geist face ships U+20AB - the dong
-   * sign. Verified against both cmaps: Geist Sans and Geist Mono have U+0024
-   * and no U+20AB. With no stated fallback the browser picked its own, which
-   * rendered the symbol as a wrong glyph next to otherwise correct digits.
+   * NEITHER Geist face ships U+20AB, the dong sign. The explicit fallbacks
+   * below were not enough: var(--font-geist-*) expands to Geist *and* its
+   * metric-adjusted Arial fallback, so the sign always came from Arial (or
+   * Consolas in mono) as a small raised mark in a foreign weight.
    *
-   * Font fallback is per glyph, not per run, so only the currency mark drops
-   * through to Consolas / Segoe UI - every digit still comes from Geist and
-   * stays tabular. The formatter is untouched: it always emitted U+20AB
-   * correctly and the bug was purely coverage.
+   * --font-dong-* goes FIRST. Each is a one-glyph face (U+20AB only, composed
+   * from Geist's own d-with-stroke plus underscore, see
+   * scripts/build-dong-font.py) behind unicode-range U+20AB, so it claims the
+   * dong sign and nothing else; every other character falls through to Geist.
+   * Being first cannot disturb metrics: a face whose range excludes the space
+   * character is never the "first available font".
    */
-  --font-sans: var(--font-geist-sans), "Segoe UI", "Helvetica Neue", Arial,
-    "Noto Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), Consolas, "DejaVu Sans Mono",
-    "Courier New", ui-monospace, monospace;
+  --font-sans: var(--font-dong-sans), var(--font-geist-sans), "Segoe UI",
+    "Helvetica Neue", Arial, "Noto Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-dong-mono), var(--font-geist-mono), Consolas,
+    "DejaVu Sans Mono", "Courier New", ui-monospace, monospace;
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -92,9 +88,13 @@
   --color-hairline: var(--hairline);
   --color-hairline-strong: var(--hairline-strong);
   --color-grid-line: var(--grid-line);
-  --color-accent-from: var(--grad-deco-from);
-  --color-accent-mid: var(--grad-deco-mid);
-  --color-accent-to: var(--grad-deco-to);
+  --color-glass: var(--glass);
+  --color-glass-strong: var(--glass-strong);
+  --color-glass-edge: var(--glass-edge);
+  --color-cta-from: var(--cta-from);
+  --color-cta-to: var(--cta-to);
+  --color-cta-bloom: var(--cta-bloom);
+  --color-segment-active: var(--segment-active);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-warning: var(--warning);
@@ -121,113 +121,89 @@
   --spacing-stack: 1.5rem;
   --spacing-panel: 1.25rem;
 
-  /* Spacing rhythm for cinematic sections.
-     Capped at 6rem/96px: .section-full already centres its content inside a
-     100svh box, so this padding is only the gutter that applies once content
-     outgrows the viewport. */
-  --spacing-section: clamp(3.5rem, 5vw, 6rem);
-  /* Purposeful motion. --ease-island is soft-skill's heavy-mass curve: slow to
-     leave, decisive to arrive, which is what makes a control feel weighted
-     rather than merely animated. */
+  /* Vertical rhythm between marketing sections. */
+  --spacing-section: clamp(5rem, 9vw, 8.5rem);
+  /* Purposeful motion. --ease-island is a heavy-mass curve: slow to leave,
+     decisive to arrive, which is what makes a control feel weighted rather
+     than merely animated. */
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-island: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 :root {
-  /* ---- Base ------------------------------------------------------------ */
-  /* Not pure white: a faint cool cast so the pastel mesh has something to sit
-     on and white glass cards read as raised rather than as holes. */
-  --background: #fafbff;
-  --foreground: #0f1120;        /* headings - 18.1:1 on --background */
-  --body-foreground: #3a3d4d;   /* body copy - 10.4:1 */
-  /* Labels sit at 8.0:1 on the base. Darkened from #545869 when the mesh was
-     pushed toward the Agio reference: against the deeper lavender stop that
-     value measured 4.47:1 and missed AA. This holds 5.2:1 at the mesh's
-     darkest point, so the atmosphere can be strong without costing legibility. */
-  --muted-foreground: #4a4e5e;
+  /* ---- Ground and text ------------------------------------------------- */
+  /* Measured #020204 at the reference's corners and ~#050507 under the grid;
+     #030305 sits between so the radial blooms have room to fall off without
+     banding against pure black. */
+  --background: #030305;
+  --foreground: #ffffff;        /* headings - 20.6:1 */
+  --body-foreground: #a1a1aa;   /* body copy - 8.0:1 */
+  --muted-foreground: #8b8b94;  /* labels - 6.1:1, 5.4:1 inside the indigo bloom */
+  /* The lifted charcoal disc inside the top hero ring. */
+  --aperture: #1c1c22;
 
   /* ---- Surfaces -------------------------------------------------------- */
-  /* --surface is OPAQUE on purpose. It backs .panel, which is what every data
-     table and dense app screen sits on, and translucent data surfaces are how
-     a light redesign turns into an unreadable one. Glass is opt-in via
-     .glass-card, not the default. */
-  --surface: #ffffff;
-  --surface-2: #f4f6fd;
-  --surface-hover: #eef1fb;
-  --glass: rgb(255 255 255 / 68%);
-  --glass-strong: rgb(255 255 255 / 88%);
-  --glass-edge: rgb(255 255 255 / 75%);
+  --surface: #0a0a0f;           /* OPAQUE data surface: .panel, tables, forms */
+  --surface-2: #101016;
+  --surface-hover: #15151c;
+  --glass: rgb(255 255 255 / 3%);
+  --glass-strong: rgb(255 255 255 / 6%);
+  --glass-edge: rgb(255 255 255 / 10%);
 
-  --card: #ffffff;
-  --card-foreground: #0f1120;
-  --popover: #ffffff;
-  --popover-foreground: #0f1120;
+  --card: #0a0a0f;
+  --card-foreground: #ffffff;
+  --popover: #0e0e14;
+  --popover-foreground: #ffffff;
 
-  /* Hairlines are ink at low alpha, not white: on a light ground a white
-     border is invisible. Everything that drew borders as white/6% in the dark
-     system must use these. */
-  --hairline: rgb(15 17 32 / 8%);
-  --hairline-strong: rgb(15 17 32 / 14%);
-  --border: rgb(15 17 32 / 9%);
-  --input: rgb(15 17 32 / 12%);
-  --grid-line: rgb(15 17 32 / 5%);
-  --dot-color: rgb(124 92 255 / 22%);
+  /* ---- Lines ----------------------------------------------------------- */
+  --hairline: rgb(255 255 255 / 8%);
+  --hairline-strong: rgb(255 255 255 / 14%);
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 12%);
+  --grid-line: rgb(255 255 255 / 5%);
+  /* Measured 45-47px in the 0.78-scale reference, i.e. ~56px at 1440. */
+  --grid-size: 56px;
 
-  /* ---- Brand gradient, three calibrated ranges (see header) ------------ */
-  --grad-deco-from: #ff9ecd;
-  --grad-deco-mid: #7c5cff;
-  --grad-deco-to: #5ce0c0;
-
-  --grad-text-from: #7c5cff;
-  --grad-text-mid: #3d7de8;
-  --grad-text-to: #1f9d8f;
-
-  --grad-fill-from: #6b4aef;
-  --grad-fill-to: #4936d8;
+  /* ---- Brand light: indigo -> violet ------------------------------------ */
+  --cta-from: #4358d1;          /* CTA top edge, measured. White 5.9:1 */
+  --cta-to: #5a5fe0;            /* CTA lower body. White 4.9:1 */
+  --cta-bloom: #9b90f1;         /* 2.7:1 under white: never behind the label */
+  --glow-indigo: rgb(91 91 240 / 45%);
+  --card-edge: rgb(124 116 236 / 28%);
+  --card-highlight: #9a90c8;
+  --segment-active: #111a36;
+  /* Kept under their old names: the sidebar's active marker reads these. */
+  --grad-fill-from: #6d6af0;
+  --grad-fill-to: #4358d1;
 
   /* ---- Interactive ----------------------------------------------------- */
-  --primary: #5b46e5;         /* solid fill behind white text - 6.08:1 */
+  --primary: #4b55db;           /* solid fill behind white text - 5.8:1 */
   --primary-foreground: #ffffff;
-  --primary-accent: #4f3fd0;  /* accent TEXT on light ground - 6.88:1 */
-  --ring: #6b4aef;
-  --secondary: #f1f3fb;
-  --secondary-foreground: #0f1120;
-  --muted: #f4f6fd;
-  --accent: #f1f3fb;
-  --accent-foreground: #0f1120;
-  --destructive: #d92d3a;
+  --primary-accent: #a5a6ff;    /* accent TEXT and links - 9.3:1 */
+  --ring: #7c7cf5;
+  --secondary: #15151c;
+  --secondary-foreground: #ffffff;
+  --muted: #101016;
+  --accent: #17171f;
+  --accent-foreground: #ffffff;
+  --destructive: #f2555a;
 
-  /* ---- Pastel mesh stops (decoration only) -----------------------------
-     Saturated toward the Agio reference. The lavender stop is the darkest
-     point any text has to survive; --muted-foreground was recalculated
-     against it rather than the base, which is the trade that lets the mesh
-     be this strong. */
-  --mesh-pink: #ffc9e4;
-  --mesh-lavender: #d3c6ff;
-  --mesh-mint: #b8f0e0;
-  --mesh-sky: #c2e0ff;
+  /* ---- Shadows. On black they only separate, they cannot lift, so they
+          are short and dense; lift comes from lit edges instead. -------- */
+  --shadow-soft: 0 8px 24px -14px rgb(0 0 0 / 80%);
+  --shadow-panel: 0 16px 40px -20px rgb(0 0 0 / 85%);
+  --shadow-float: 0 30px 80px -30px rgb(0 0 0 / 90%);
 
-  /* Double-bezel shell tint (soft-skill nested-enclosure architecture). */
-  --bezel-shell: rgb(15 17 32 / 4%);
-
-  /* ---- Tinted shadows. Never black: black on pastel reads as dirt. ----- */
-  --shadow-soft: 0 6px 24px -10px rgb(76 60 160 / 18%);
-  --shadow-panel: 0 10px 34px -14px rgb(76 60 160 / 22%);
-  --shadow-float:
-    0 18px 48px -14px rgb(96 70 200 / 28%),
-    0 4px 12px -6px rgb(96 70 200 / 16%);
-
-  /* ---- Status. Darkened from the dark-theme values so they stay legible
-          as text on a light ground rather than glowing. ------------------ */
-  --success: #0f8a5f;
-  --success-foreground: #06301f;
-  --warning: #a86a00;
-  --warning-foreground: #3d2600;
-  --error: #d92d3a;
-  --error-foreground: #4a0d12;
+  /* ---- Status, dark-tuned: all >= 5:1 on --surface --------------------- */
+  --success: #3dd68c;
+  --success-foreground: #b8f5d0;
+  --warning: #e0a726;
+  --warning-foreground: #f5e3b8;
+  --error: #f2555a;
+  --error-foreground: #ffd1d1;
 
   /* Chart series - VALIDATED colorblind-safe, do not change (dE >= 8).
-     Unchanged from the dark theme; see FRONTEND.md before touching. */
+     4.7-6.7:1 on --surface. See chart-colors.ts. */
   --chart-1: #3987e5;
   --chart-2: #d95926;
   --chart-3: #199e70;
@@ -237,95 +213,25 @@
   --radius: 0.75rem;
 
   /* ---- Sidebar --------------------------------------------------------- */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0f1120;
-  --sidebar-primary: #5b46e5;
+  --sidebar: #060609;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #4b55db;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f1f3fb;
-  --sidebar-accent-foreground: #0f1120;
-  --sidebar-border: rgb(15 17 32 / 8%);
-  --sidebar-ring: #6b4aef;
-}
-
-/*
- * Parked dark theme. The previous near-black system, kept so the tokens
- * survive and a future toggle is one step away. Components have NOT been
- * re-audited against it since the light flip.
- */
-.dark {
-  --background: #0c0d10;
-  --foreground: #fafafa;
-  --body-foreground: #d4d4d8;
-  --muted-foreground: #a1a1aa;
-
-  --surface: #141519;
-  --surface-2: #1b1d23;
-  --surface-hover: #1b1d23;
-  --glass: rgb(20 21 25 / 72%);
-  --glass-strong: rgb(20 21 25 / 90%);
-  --glass-edge: rgb(255 255 255 / 10%);
-
-  --card: #141519;
-  --card-foreground: #fafafa;
-  --popover: #141519;
-  --popover-foreground: #fafafa;
-
-  --hairline: rgb(255 255 255 / 6%);
-  --hairline-strong: rgb(255 255 255 / 12%);
-  --border: rgb(255 255 255 / 6%);
-  --input: rgb(255 255 255 / 8%);
-  --grid-line: rgb(255 255 255 / 4%);
-  --dot-color: rgb(124 92 255 / 30%);
-
-  --grad-deco-from: #ff9ecd;
-  --grad-deco-mid: #7c5cff;
-  --grad-deco-to: #22d3ee;
-  --grad-text-from: #a78bfa;
-  --grad-text-mid: #60a5fa;
-  --grad-text-to: #5ce0c0;
-  --grad-fill-from: #6b4aef;
-  --grad-fill-to: #4936d8;
-
-  --primary: #2f5fe0;
-  --primary-foreground: #ffffff;
-  --primary-accent: #4d7fff;
-  --ring: #4d7fff;
-  --secondary: #1b1d23;
-  --secondary-foreground: #fafafa;
-  --muted: #17181c;
-  --accent: #1b1d23;
-  --accent-foreground: #fafafa;
-  --destructive: #e5484d;
-
-  --mesh-pink: #3a1f33;
-  --mesh-lavender: #221f3d;
-  --mesh-mint: #12302b;
-  --mesh-sky: #14243d;
-
-  --shadow-soft: 0 6px 24px -10px rgb(0 0 0 / 55%);
-  --shadow-panel: 0 10px 34px -14px rgb(0 0 0 / 60%);
-  --shadow-float: 0 18px 48px -14px rgb(0 0 0 / 70%), 0 4px 12px -6px rgb(0 0 0 / 40%);
-
-  --success: #30a46c;
-  --success-foreground: #b8f5d0;
-  --warning: #e0a726;
-  --warning-foreground: #f5e3b8;
-  --error: #e5484d;
-  --error-foreground: #ffd1d1;
-
-  --sidebar: #0e0f13;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #2f5fe0;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1b1d23;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: rgb(255 255 255 / 6%);
-  --sidebar-ring: #4d7fff;
+  --sidebar-accent: rgb(255 255 255 / 5%);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 7%);
+  --sidebar-ring: #7c7cf5;
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   body {
     @apply bg-background text-foreground;
@@ -334,233 +240,251 @@
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  html {
-    @apply font-sans;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
+  ::selection {
+    background: rgb(91 91 240 / 45%);
+    color: #ffffff;
   }
 }
 
 @layer components {
   /*
-   * THE DATA SURFACE. Opaque by design.
-   *
-   * This backs every table, form and dense app screen, so it does not get to
-   * be translucent: money on frosted glass over a pastel mesh is exactly how a
-   * light redesign becomes unreadable. Glass is a deliberate opt-in
-   * (.glass-card), never the default a page falls into.
+   * THE DATA SURFACE. Opaque by design (see the header). A 3% top highlight
+   * stands in for the lift a shadow gave on the light system.
    */
   .panel {
     background: var(--surface);
     border: 1px solid var(--hairline);
     border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-soft);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 3%),
+      var(--shadow-panel);
   }
 
-  /*
-   * THE GLASS SURFACE. For the landing and auth only, where there is no dense
-   * data to read. Translucent white over the mesh, a bright top edge to fake
-   * refraction, and a violet-tinted shadow so it floats above the pastel
-   * instead of being stamped on it.
-   */
+  /* Marketing/auth glass: translucent, blurred, with a lit top edge. */
   .glass-card {
     background: var(--glass);
-    backdrop-filter: blur(20px) saturate(150%);
-    -webkit-backdrop-filter: blur(20px) saturate(150%);
+    backdrop-filter: blur(24px) saturate(140%);
+    -webkit-backdrop-filter: blur(24px) saturate(140%);
     border: 1px solid var(--glass-edge);
     border-radius: var(--radius-2xl);
     box-shadow:
-      var(--shadow-float),
-      inset 0 1px 0 rgb(255 255 255 / 65%);
+      inset 0 1px 0 rgb(255 255 255 / 6%),
+      var(--shadow-float);
   }
 
   /*
-   * The floating mini-cards that orbit the hero. Same glass, tighter radius,
-   * plus a slow vertical drift. The drift is decoration, so it is the first
-   * thing to go under prefers-reduced-motion (see the bottom of this file).
+   * THE STAGE CARD - the reference's big pricing card. Glass with an indigo
+   * border, a light line along the top edge where the ring behind it shines
+   * through, and a bloom radiating down from that edge.
    */
-  .float-card {
-    /* Tilt lives in a variable so the drift keyframe can compose on top of it.
-       Setting transform in the keyframe alone would silently discard any
-       rotation class, which is why the cards previously sat square. */
-    --float-rotate: 0deg;
-    transform: rotate(var(--float-rotate));
-    background: var(--glass-strong);
-    backdrop-filter: blur(16px) saturate(150%);
-    -webkit-backdrop-filter: blur(16px) saturate(150%);
-    border: 1px solid var(--glass-edge);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--shadow-float);
-    animation: float-drift 9s ease-in-out infinite;
-    will-change: transform;
+  .glass-stage {
+    position: relative;
+    isolation: isolate;
+    background:
+      radial-gradient(55% 50% at 50% 0%, rgb(91 91 240 / 42%), rgb(91 91 240 / 10%) 55%, transparent 80%),
+      rgb(8 8 12 / 62%);
+    /* Tinted and only lightly blurred on purpose: the reference shows the
+       lower ring through the card as a dim shape. At 24px+ blur the 2px glass
+       rim smears into nothing; untinted, it competes with the card's copy. */
+    backdrop-filter: blur(12px) saturate(140%);
+    -webkit-backdrop-filter: blur(12px) saturate(140%);
+    border: 1px solid var(--card-edge);
+    border-radius: 28px;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 5%),
+      0 -20px 80px -40px var(--glow-indigo),
+      var(--shadow-float);
+  }
+  .glass-stage::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto;
+    height: 1px;
+    border-radius: 28px 28px 0 0;
+    background: linear-gradient(
+      90deg,
+      transparent 8%,
+      var(--card-highlight) 38%,
+      #ffffff 50%,
+      var(--card-highlight) 62%,
+      transparent 92%
+    );
+    opacity: 1;
+    box-shadow: 0 0 18px 2px rgb(154 144 200 / 45%);
+    pointer-events: none;
+  }
+
+  /* Forms on glass: the same card, dense enough that the rings behind it
+     never run through a field someone is typing into. */
+  .glass-stage--dense {
+    background:
+      radial-gradient(55% 50% at 50% 0%, rgb(91 91 240 / 34%), rgb(91 91 240 / 8%) 55%, transparent 80%),
+      rgb(8 8 12 / 90%);
+  }
+
+  /* An app panel that carries the brand light: the balance hero. Still
+     opaque - the bloom is painted, not seen through. */
+  .panel-lit {
+    background:
+      radial-gradient(60% 90% at 0% 0%, rgb(91 91 240 / 16%), transparent 70%),
+      radial-gradient(40% 60% at 100% 0%, rgb(139 124 248 / 8%), transparent 70%),
+      var(--surface);
+    border-color: rgb(124 116 236 / 18%);
   }
 
   /*
-   * DOUBLE-BEZEL (soft-skill nested enclosure). A premium container is not a
-   * card dropped on a background: it is a plate seated in a tray. The shell
-   * carries the tint, the hairline and the outer radius; the core sits inside
-   * with its own surface and a concentric radius, computed by subtracting the
-   * shell padding so the two curves stay parallel rather than merely similar.
+   * PAGE GROUND. The grid is two 1px lines on a --grid-size lattice, masked to
+   * an ellipse so it is present in the centre and gone at the edges.
    */
-  .bezel {
-    background: var(--bezel-shell);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-3xl);
-    padding: 0.5rem;
-    box-shadow: var(--shadow-float);
+  .grid-ground {
+    background-image:
+      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 60% 55% at 50% 35%, #000 30%, transparent 75%);
+    mask-image: radial-gradient(ellipse 60% 55% at 50% 35%, #000 30%, transparent 75%);
   }
-  .bezel-core {
-    background: var(--surface);
-    border-radius: calc(var(--radius-3xl) - 0.5rem);
-    box-shadow: inset 0 1px 0 rgb(255 255 255 / 80%);
+  /* The charcoal disc inside the top ring, painted under the grid. */
+  .aperture-glow {
+    background: radial-gradient(
+      circle at 50% -4%,
+      var(--aperture) 0,
+      var(--aperture) 24%,
+      color-mix(in oklab, var(--aperture) 50%, transparent) 33%,
+      transparent 44%
+    );
   }
-  /* Glass variant, for the landing where the mesh should read through. */
-  .bezel-core--glass {
-    background: var(--glass-strong);
-    backdrop-filter: blur(18px) saturate(150%);
-    -webkit-backdrop-filter: blur(18px) saturate(150%);
+
+  /* App ground: black with one quiet indigo light at the top. Data wins. */
+  .app-ground {
+    background:
+      radial-gradient(70% 38% at 50% -12%, rgb(91 91 240 / 9%), transparent 70%),
+      var(--background);
   }
 
   /*
-   * ISLAND CTA. A pill that responds with mass: the whole control compresses
-   * on press while the nested icon well drifts out and up, so the button has
-   * internal tension instead of a flat colour swap.
+   * PRIMARY CTA. Vertical gradient (measured #4358D1 at the top) with the
+   * violet bloom parked below the label - see the header for why.
    */
-  .cta-island {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    border-radius: 999px;
-    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: transform 0.5s var(--ease-island), box-shadow 0.5s var(--ease-island);
-  }
-  .cta-island:active { transform: scale(0.98); }
-  .cta-island__well {
+  .cta-primary {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 2rem;
     border-radius: 999px;
-    transition: transform 0.5s var(--ease-island);
-  }
-  .group\/cta:hover .cta-island__well { transform: translate(3px, -2px) scale(1.06); }
-
-  /*
-   * Display-type gradient. TEXT RANGE ONLY (see the file header): every stop
-   * clears 3:1 on --background, which is the WCAG bar for large text. Do not
-   * put this on body copy - at 16px the bar is 4.5:1 and the teal end misses.
-   */
-  .accent-gradient-text {
-    background-image: linear-gradient(
-      100deg,
-      var(--grad-text-from) 0%,
-      var(--grad-text-mid) 52%,
-      var(--grad-text-to) 100%
-    );
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    /* Keeps descenders from being clipped by the background box. */
-    padding-bottom: 0.08em;
-  }
-
-  /* The only gradient allowed behind white text (fill range, >= 5.45:1). */
-  .accent-gradient-fill {
-    background-image: linear-gradient(
-      100deg,
-      var(--grad-fill-from) 0%,
-      var(--grad-fill-to) 100%
-    );
     color: #ffffff;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    background:
+      radial-gradient(70% 60% at 50% 125%, var(--cta-bloom), transparent 70%),
+      linear-gradient(180deg, var(--cta-from), var(--cta-to));
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 25%),
+      inset 0 -1px 0 rgb(0 0 0 / 20%),
+      0 0 12px rgb(91 91 240 / 35%);
+    transition:
+      box-shadow 0.5s var(--ease-island),
+      transform 0.5s var(--ease-island);
+  }
+  .cta-primary:hover {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 30%),
+      inset 0 -1px 0 rgb(0 0 0 / 20%),
+      0 0 28px rgb(91 91 240 / 55%);
+  }
+  .cta-primary:active { transform: scale(0.98); }
+  .cta-primary--sm {
+    height: 2.25rem;
+    padding: 0 1.125rem;
+    font-size: 0.875rem;
+  }
+
+  /* Small pill above a headline. */
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 999px;
+    background: var(--glass-strong);
+    border: 1px solid var(--glass-edge);
+    color: #e4e4e7;
+    font-size: 0.75rem;
+    font-weight: 500;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Segmented toggle: near-invisible track, navy active pill. */
+  .segmented {
+    display: inline-flex;
+    padding: 4px;
+    gap: 2px;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 4%);
+    border: 1px solid var(--hairline);
+  }
+  .segmented__item {
+    border-radius: 999px;
+    padding: 0.375rem 0.875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted-foreground);
+    transition: color 0.3s, background-color 0.3s;
+  }
+  .segmented__item:hover { color: var(--foreground); }
+  .segmented__item[data-active="true"] {
+    background: var(--segment-active);
+    color: #ffffff;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+  }
+
+  /* Plan/tier card, and its highlighted variant. Mostly opaque: the ring
+     behind the stage card may show through the stage's header, but not
+     through the figures. */
+  .plan-card {
+    border-radius: 18px;
+    background: rgb(12 12 18 / 78%);
+    border: 1px solid var(--hairline);
+  }
+  .plan-card--featured {
+    background:
+      radial-gradient(80% 60% at 50% 0%, rgb(91 91 240 / 16%), transparent 70%),
+      rgb(14 14 22 / 82%);
+    border-color: rgb(91 91 240 / 70%);
+    box-shadow:
+      0 0 0 1px rgb(91 91 240 / 25%),
+      0 0 40px rgb(91 91 240 / 25%);
   }
 
   /*
-   * The page ground: a soft pastel mesh over the near-white base. Kept at low
-   * alpha deliberately - the deepest point still leaves --muted-foreground at
-   * 5.2:1, so text stays legible anywhere on it.
+   * Display type. The hero headline is LIGHT (300) with tight tracking; the
+   * reference's voice is quiet type at large sizes, not heavy type.
+   * The shadow keeps white strokes legible where they cross the rings'
+   * white highlights.
    */
-  .mesh-bg {
-    background:
-      radial-gradient(62% 48% at 12% 8%, color-mix(in oklab, var(--mesh-pink) 94%, transparent), transparent 70%),
-      radial-gradient(58% 54% at 90% 12%, color-mix(in oklab, var(--mesh-sky) 96%, transparent), transparent 68%),
-      radial-gradient(54% 48% at 78% 86%, color-mix(in oklab, var(--mesh-mint) 88%, transparent), transparent 66%),
-      radial-gradient(62% 52% at 20% 90%, color-mix(in oklab, var(--mesh-lavender) 90%, transparent), transparent 68%),
-      var(--background);
+  .display-hero {
+    font-weight: 300;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    text-shadow: 0 2px 24px rgb(3 3 5 / 55%);
+  }
+  .display {
+    font-weight: 400;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
   }
 
-  /* Per-section grounds, so five sections have a colour rhythm instead of one
-     flat wash repeated down the page. Each keeps one pastel dominant. */
-  .mesh-bg--rose {
-    background:
-      radial-gradient(58% 50% at 84% 8%, color-mix(in oklab, var(--mesh-pink) 80%, transparent), transparent 68%),
-      radial-gradient(50% 44% at 8% 88%, color-mix(in oklab, var(--mesh-lavender) 62%, transparent), transparent 66%),
-      var(--background);
-  }
-  .mesh-bg--sky {
-    background:
-      radial-gradient(56% 50% at 10% 10%, color-mix(in oklab, var(--mesh-sky) 88%, transparent), transparent 68%),
-      radial-gradient(52% 46% at 90% 84%, color-mix(in oklab, var(--mesh-mint) 62%, transparent), transparent 66%),
-      var(--background);
-  }
-  .mesh-bg--mint {
-    background:
-      radial-gradient(54% 48% at 88% 14%, color-mix(in oklab, var(--mesh-mint) 84%, transparent), transparent 66%),
-      radial-gradient(50% 46% at 6% 82%, color-mix(in oklab, var(--mesh-sky) 66%, transparent), transparent 66%),
-      var(--background);
-  }
-
-  /* A quieter mesh for app screens, where data has to win over atmosphere. */
-  .mesh-bg--subtle {
-    background:
-      radial-gradient(50% 40% at 8% 0%, color-mix(in oklab, var(--mesh-lavender) 34%, transparent), transparent 70%),
-      radial-gradient(46% 38% at 96% 6%, color-mix(in oklab, var(--mesh-sky) 30%, transparent), transparent 68%),
-      var(--background);
-  }
-
-  /*
-   * Dot field. Masked to an arc so it reads as a drift of particles rather
-   * than wallpaper, which is what separates the Agio treatment from a plain
-   * polka-dot tile.
-   */
-  .dot-field {
-    background-image: radial-gradient(circle, var(--dot-color) 1.1px, transparent 1.1px);
-    background-size: 22px 22px;
-    -webkit-mask-image: radial-gradient(70% 58% at 50% 62%, #000 12%, transparent 72%);
-    mask-image: radial-gradient(70% 58% at 50% 62%, #000 12%, transparent 72%);
-  }
-
-  /*
-   * Arc variant for the hero. Two masks intersect: a wide ellipse anchored
-   * below the headline, minus a clear ellipse where the headline itself sits.
-   * The subtraction is the point - it keeps density in the empty band under
-   * the type while leaving the type on clean ground, so the field adds depth
-   * without touching heading contrast.
-   */
-  .dot-field--arc {
-    background-image: radial-gradient(circle, var(--dot-color) 1.3px, transparent 1.3px);
-    background-size: 26px 26px;
-    -webkit-mask-image:
-      radial-gradient(78% 62% at 50% 78%, #000 8%, transparent 76%),
-      radial-gradient(46% 30% at 50% 34%, transparent 62%, #000 88%);
-    mask-image:
-      radial-gradient(78% 62% at 50% 78%, #000 8%, transparent 76%),
-      radial-gradient(46% 30% at 50% 34%, transparent 62%, #000 88%);
-    -webkit-mask-composite: source-in;
-    mask-composite: intersect;
-  }
-
-  /*
-   * The product-UI container title. Not .display: that carries the marketing
-   * headline's cinematic weight and negative tracking, which reads as shouting
-   * on a dense tool screen. This is the Linear/Stripe register.
-   */
+  /* The product-UI container title - the Linear/Stripe register. */
   .h-page {
     font-size: 1.375rem;
-    font-weight: 600;
-    letter-spacing: -0.011em;
+    font-weight: 500;
+    letter-spacing: -0.02em;
     line-height: 1.2;
   }
 
@@ -573,6 +497,12 @@
     letter-spacing: 0.08em;
   }
 
+  /* Small uppercase eyebrow/kicker label. */
+  .kicker {
+    @apply text-xs font-medium uppercase text-muted-foreground;
+    letter-spacing: 0.14em;
+  }
+
   /* Vertical rhythm between blocks on a page. */
   .page-stack {
     display: flex;
@@ -580,89 +510,16 @@
     gap: var(--spacing-stack);
   }
 
-  /* Big legible money figures - tabular so digits don't jitter on update.
-     Carries a sensible default size; any explicit text-* utility on the
-     element overrides it (utilities layer wins over components layer). */
-  .figure-lg {
-    @apply font-mono text-3xl font-medium tabular-nums;
-    letter-spacing: -0.02em;
-  }
-
   /*
-   * Cinematic display headline. Agio sets these uppercase and very wide, so
-   * the tracking opens up rather than tightening the way a dark editorial
-   * headline would.
+   * Big money figures. Light sans in the display voice, tabular so digits do
+   * not jitter on update. Carries a default size; any text-* utility on the
+   * element overrides it (utilities beat the components layer).
    */
-  .display {
-    font-weight: 600;
-    letter-spacing: -0.02em;
-    line-height: 1;
+  .figure-lg {
+    @apply font-sans text-3xl tabular-nums;
+    font-weight: 300;
+    letter-spacing: -0.03em;
   }
-
-  /* The Agio-style hero headline: uppercase, huge, slightly open tracking. */
-  .display-hero {
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.005em;
-    line-height: 0.95;
-  }
-
-  /* Small uppercase eyebrow/kicker label. */
-  .kicker {
-    @apply text-xs font-medium uppercase text-muted-foreground;
-    letter-spacing: 0.14em;
-  }
-
-  /* The pill that Agio uses for its "LIVE IN 140 CURRENCIES" badge. */
-  .pill-badge {
-    @apply inline-flex items-center gap-2 text-xs font-medium uppercase;
-    letter-spacing: 0.14em;
-    background: var(--glass-strong);
-    border: 1px solid var(--glass-edge);
-    border-radius: 999px;
-    padding: 0.5rem 1rem;
-    box-shadow: var(--shadow-soft);
-    color: var(--body-foreground);
-  }
-
-  /* Full-viewport storytelling section. */
-  .section-full {
-    min-height: 100svh;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding-block: var(--spacing-section);
-  }
-
-  /* Fine hairline grid - adds structural depth behind hero/closing content. */
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
-      linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
-    background-size: 64px 64px;
-  }
-
-  /* Concentric hairline rings - a different geometric language from .bg-grid,
-     used at the closing call to action so the two ends of the page do not read
-     as the same repeated layout family. */
-  .bg-rings {
-    background-image: repeating-radial-gradient(
-      circle at 50% 50%,
-      var(--grid-line) 0 1px,
-      transparent 1px 88px
-    );
-  }
-
-  /* Soft radial vignette to fade a full-bleed visual into the page edges. */
-  .edge-fade {
-    -webkit-mask-image: radial-gradient(120% 100% at 50% 40%, #000 55%, transparent 100%);
-    mask-image: radial-gradient(120% 100% at 50% 40%, #000 55%, transparent 100%);
-  }
-}
-
-@keyframes float-drift {
-  0%, 100% { transform: rotate(var(--float-rotate)) translateY(0); }
-  50% { transform: rotate(var(--float-rotate)) translateY(-11px); }
 }
 
 /* Reveal-on-scroll: a `.reveal` element rises+fades in when it enters view.
@@ -673,15 +530,17 @@
    reveal survives even a broken React hydration. */
 .reveal-ready .reveal {
   opacity: 0;
-  /* Heavier entry than a plain fade-up: soft-skill asks for mass, so the
-     element also resolves out of a slight blur. Both properties are
-     compositor-friendly, so this stays a GPU job. */
-  transform: translateY(40px);
+  transform: translateY(32px);
   filter: blur(6px);
   transition:
     opacity 0.85s var(--ease-island),
     transform 0.85s var(--ease-island),
     filter 0.85s var(--ease-island);
+}
+/* will-change only while hidden. Left on permanently it makes every revealed
+   block a backdrop root, and then no glass inside it (.glass-card,
+   .glass-stage) can see - or blur - anything behind the block. */
+.reveal-ready .reveal:not(.is-revealed) {
   will-change: opacity, transform;
 }
 .reveal-ready .reveal.is-revealed {
@@ -694,12 +553,17 @@
    transparency, fall back to a solid surface rather than a muddy panel. */
 @media (prefers-reduced-transparency: reduce) {
   .glass-card,
-  .float-card,
-  .pill-badge {
+  .glass-stage,
+  .hero-badge {
     background: var(--surface);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    border-color: var(--hairline);
+  }
+  /* The stage card keeps its indigo bloom, now on an opaque base. */
+  .glass-stage {
+    background:
+      radial-gradient(55% 50% at 50% 0%, rgb(91 91 240 / 42%), rgb(91 91 240 / 10%) 55%, transparent 80%),
+      var(--surface);
   }
 }
 
@@ -711,17 +575,6 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
-  }
-  /* Explicit, not just duration-clamped: the drifting cards must actually stop
-     and sit still, not jitter at 0.001ms.
-
-     The tilt is deliberately kept. A static rotation is composition, not
-     motion, and reduced-motion asks for less movement rather than a different
-     layout - flattening the cards would change the design for these users
-     instead of calming it. Only the drift is removed. */
-  .float-card {
-    animation: none !important;
-    transform: rotate(var(--float-rotate)) !important;
   }
   .reveal-ready .reveal {
     opacity: 1;

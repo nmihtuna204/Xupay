@@ -38,7 +38,7 @@ Giao diện chia làm **hai nhóm rõ ràng**:
 | Icons | **@phosphor-icons/react** | v2 | Bộ icon (`weight="light"`, import từ `/dist/ssr`) |
 | Toast | **sonner** | — | Thông báo |
 | Fonts | **Geist Sans / Geist Mono** | local (gói `geist`) | Không phụ thuộc mạng |
-| Testing | **Vitest** + Testing Library + **jsdom** | — | 29 test |
+| Testing | **Vitest** + Testing Library + **jsdom** | — | 31 test |
 
 **Scripts:** `npm run dev` · `npm run build` · `npm start` · `npm run lint` · `npm test`
 
@@ -80,59 +80,69 @@ Next.js 16 đổi tên `middleware.ts` → **`proxy.ts`** (hàm export tên `pro
 ## 4. Hệ thống thiết kế (Design System)
 
 ### Phong cách
-Giao diện **light-first "Agio pastel"**: nền near-white được nâng bởi một lớp mesh pastel rất nhẹ (hồng → lavender → mint), thẻ kính nổi, và gradient thương hiệu tím → xanh → mint. Chiều sâu đến từ độ trong và shadow nhuốm màu, **không** từ viền dày hay shadow đen. Số tiền dùng **font mono tabular** để không bị "nhảy" khi cập nhật.
+Giao diện **tối "dark glass"**, lấy cảm hứng từ Fampal (Dribbble 24487828). Spec đầy đủ, số đo và lý do từng quyết định nằm ở [`docs/design/spec.md`](../../docs/design/spec.md). Tóm tắt:
 
-Theme sáng là mặc định, do `next-themes` điều khiển (`attribute="class"`, `defaultTheme="light"`, `enableSystem={false}`). Bộ token tối trước đây được **giữ lại dưới `.dark`** nhưng **chưa audit lại** sau khi lật sáng — coi như đang tạm gác, chưa ship.
+- Nền gần đen `#030305`, lưới vuông mờ (ô 56px, trắng 5%) có mask hình elip: rõ ở giữa, tan dần ra mép.
+- Hero có **hai vòng kính 3D** (React Three Fiber + drei `MeshTransmissionMaterial`), viền cầu vồng lấy từ môi trường dựng hoàn toàn bằng `Lightformer` màu, không tải file HDR nào.
+- Ánh sáng thương hiệu indigo → violet. Chiều sâu đến từ **ánh sáng** (bloom indigo, cạnh trên được chiếu sáng) chứ không từ shadow, vì trên nền đen shadow gần như vô hình.
 
-### Quy tắc giữ hệ thống này đứng vững (quan trọng nhất)
-Một dải pastel **không thể** vừa làm chữ, vừa làm nền nút, vừa làm trang trí: mint `#5ce0c0` chỉ đạt **1.58:1** trên nền near-white. Vì vậy gradient thương hiệu tồn tại ở **ba dải đã hiệu chỉnh, không thay thế cho nhau được**:
+App chỉ có theme tối. `next-themes` bị ép `forcedTheme="dark"` để `<html>` luôn mang class `.dark`, nhờ vậy các biến thể `dark:` của shadcn và `color-scheme` cũng tối theo.
 
-| Nhóm token | Dải màu | Ràng buộc |
+### Hai bề mặt, không thay thế cho nhau
+| Recipe | Dùng ở | Lý do |
 |---|---|---|
-| `--grad-deco-*` | Toàn dải pastel, có mint | Chỉ trang trí: mesh, glow, tint. **Không bao giờ mang chữ.** |
-| `--grad-text-*` | `#7c5cff → #3d7de8 → #1f9d8f` | Chỉ cho **display type** (≥24px, chuẩn 3:1). Đo được 4.20 / 3.83 / 3.24. |
-| `--grad-fill-*` | `#6b4aef → #4936d8` | Gradient **duy nhất** được đặt dưới chữ trắng. Đo được 5.45 / 7.49. |
+| `.panel` (+ `.panel-lit`) | Mọi bảng, form, màn hình app | **Đục** (`--surface #0a0a0f`). Tiền đặt trên kính mờ phủ nền sáng sẽ không đọc được. `.panel-lit` chỉ vẽ thêm bloom indigo, vẫn đục. |
+| `.glass-card`, `.glass-stage` | Landing và auth | Trắng 3% + backdrop blur, viền indigo, vệt sáng ở cạnh trên. `.glass-stage--dense` dùng cho form đăng nhập/đăng ký, để các vòng phía sau không chạy qua ô đang gõ. |
 
-### Bảng màu (CSS tokens — Tailwind v4 `@theme`)
+**Lưu ý kỹ thuật:** `.reveal` chỉ bật `will-change` khi đang ẩn. Nếu giữ vĩnh viễn, mỗi khối đã hiện sẽ trở thành một "backdrop root" và kính bên trong không còn nhìn thấy gì phía sau nó.
+
+### Bảng màu (CSS tokens, Tailwind v4 `@theme`)
 
 | Token | Giá trị | Dùng cho |
 |-------|---------|----------|
-| `--background` | `#fafbff` | Nền trang (near-white, hơi lạnh) |
-| `--foreground` | `#0f1120` | Heading — 18.1:1 |
-| `--body-foreground` | `#3a3d4d` | Body copy — 10.4:1 |
-| `--muted-foreground` | `#4a4e5e` | Label/phụ — 8.0:1 nền base, 5.2:1 chỗ mesh đậm nhất |
-| `--surface` / `--card` | `#ffffff` | **Đục**, nền cho `.panel` (bảng, form) |
-| `--glass` / `--glass-strong` | trắng 68% / 88% | Kính — chỉ landing & auth |
-| `--hairline` | `rgb(15 17 32 / 8%)` | Viền (mực alpha thấp, **không** phải trắng) |
-| `--primary` | `#5b46e5` | Nền nút dưới chữ trắng — 6.08:1 |
-| `--primary-accent` | `#4f3fd0` | Chữ/link accent trên nền sáng — 6.88:1 |
-| `--radius` | `0.75rem` | Bo góc (thang sm→4xl) |
+| `--background` | `#030305` | Nền trang |
+| `--foreground` | `#ffffff` | Heading, 20.6:1 |
+| `--body-foreground` | `#a1a1aa` | Body copy, 8.0:1 |
+| `--muted-foreground` | `#8b8b94` | Label/phụ, 6.1:1 (5.4:1 trong vùng bloom indigo) |
+| `--surface` / `--card` | `#0a0a0f` | **Đục**, nền cho `.panel` |
+| `--glass` / `--glass-strong` / `--glass-edge` | trắng 3% / 6% / 10% | Kính, chỉ landing và auth |
+| `--hairline` | `rgb(255 255 255 / 8%)` | Viền |
+| `--cta-from` → `--cta-to` | `#4358d1` → `#5a5fe0` | Nút chính, gradient dọc; chữ trắng ≥ 4.9:1 |
+| `--cta-bloom` | `#9b90f1` | Quầng tím dưới nút. Chỉ đạt 2.7:1 với chữ trắng, nên **luôn nằm dưới baseline** của nhãn |
+| `--primary` | `#4b55db` | Nền đặc dưới chữ trắng, 5.8:1 |
+| `--primary-accent` | `#a5a6ff` | Chữ/link accent, 9.3:1 |
+| `--success` / `--warning` / `--error` | `#3dd68c` / `#e0a726` / `#f2555a` | Trạng thái, đều ≥ 5:1 trên `--surface` |
+
+### Vòng kính ở hero
+- **Nạp:** `components/features/marketing/hero-rings/`. `HeroRings` render sẵn ảnh tĩnh `public/ring-fallback.png` phía server (LCP là ảnh thường, hero không bao giờ trống). Chỉ trên desktop ≥ 768px **và** không bật `prefers-reduced-motion` thì client mới tải `RingScene` qua `dynamic(..., { ssr: false })`, rồi fade sang canvas khi frame đầu đã vẽ.
+- **Tiết kiệm:** canvas ngừng render khi hero ra khỏi màn hình (`IntersectionObserver` → `frameloop="never"`).
+- **three.js** nằm trong một chunk riêng khoảng 1MB, trang auth và app không tải.
+- **Cập nhật ảnh fallback:** chụp lại scene trên nền trong suốt khi đổi hình vòng.
 
 ### Typography
-- **Geist Sans** — chữ giao diện; **Geist Mono** — số tiền & mã.
+- **Geist Sans** cho chữ giao diện; H1 hero dùng weight **300**, tracking -0.04em. **Geist Mono** chỉ còn cho mã/ID và các cột số trong bảng. Số tiền lớn (`.figure-lg`) dùng sans light + `tabular-nums`.
+- **Ký hiệu ₫** — cả hai mặt Geist đều thiếu U+20AB, nên trước đây ₫ bị mượn từ Arial/Consolas (nhỏ, lệch dòng). `src/fonts/dong-*.woff` là font một-glyph ghép từ chính `đ` + gạch dưới của Geist (sinh bằng `scripts/build-dong-font.py`, chạy lại khi nâng cấp gói `geist`), nạp với `unicode-range: U+20AB` và đứng **đầu** stack `--font-sans`/`--font-mono`.
 - Nạp cục bộ qua gói `geist` (`next/font/local`) → **không fetch Google Fonts lúc build** (điều kiện tiên quyết để build Docker offline).
 
 ### Icon
 **Phosphor** (`@phosphor-icons/react`) ở `weight="light"`. Import từ `/dist/ssr`: entrypoint chính kéo theo `IconContext` (client-only) và sẽ ép `"use client"` lên mọi Server Component có icon. Vì bản SSR không đọc được context, `weight="light"` phải đặt **tường minh ở từng chỗ dùng** — thiếu một chỗ là chỗ đó âm thầm render ở weight regular.
 
 ### Recipe dùng lại (CSS `@layer components`)
-- `.panel` — **mặt phẳng dữ liệu, đục**. Nền mọi bảng/form. Không kính: tiền trên kính mờ phủ mesh pastel là cách nhanh nhất để một bản redesign sáng trở nên khó đọc.
-- `.glass-card` / `.float-card` — kính trong, blur, shadow nhuốm tím. **Chỉ** landing & auth.
-- `.bezel` + `.bezel-core` — vỏ lồng hai lớp; bán kính lõi = bán kính vỏ trừ padding để hai đường cong song song.
-- `.cta-island` — pill nén khi nhấn, "well" icon lồng bên trong trượt chéo lên.
-- `.mesh-bg` (landing) / `.mesh-bg--subtle` (app, ~⅓ độ đậm) / `--rose` `--sky` `--mint` (nhịp từng section).
-- `.dot-field` — lớp chấm bi, mask thành vòng cung.
-- `.accent-gradient-text` — heading gradient (**dải text**). `.accent-gradient-fill` — nền gradient dưới chữ trắng (**dải fill**).
-- `.figure-lg` — số tiền lớn, mono, tabular-nums.
+- `.panel` / `.panel-lit`: mặt phẳng dữ liệu đục (xem bảng ở trên).
+- `.glass-card` / `.glass-stage` / `.glass-stage--dense`: kính, chỉ dùng ở landing và auth.
+- `.grid-ground`: lưới có mask. `.aperture-glow`: đĩa than nằm trong vòng trên. `.app-ground`: nền app, đen với một nguồn sáng indigo nhẹ.
+- `.cta-primary` (+ `--sm`): nút viên thuốc gradient dọc, glow lớn dần khi hover. `Button` mặc định của shadcn dùng cùng gradient ở kích thước nhỏ.
+- `.hero-badge`: pill 12px trên headline.
+- `.segmented` / `.segmented__item[data-active]`: toggle hai lựa chọn.
+- `.plan-card` / `.plan-card--featured`: thẻ hạng KYC; thẻ nổi bật có viền và glow indigo.
+- `.display-hero` / `.display` / `.h-page` / `.field-label` / `.kicker` / `.figure-lg`: thang chữ.
 
-### Màu biểu đồ (đã kiểm định mù màu — GIỮ NGUYÊN)
-Bảng categorical đã qua **validator mù màu** (skill dataviz): xanh `#3987e5`, cam `#d95926`, aqua `#199e70`, vàng `#c98500` — CVD ΔE ≥ 8. **Đã đo lại trên nền sáng và giữ nguyên**, vì trên `.panel` trắng cả 4 series đều vượt ngưỡng 3:1 của WCAG 1.4.11: 3.64 / 3.88 / 3.41 / 3.07.
-
-> **Ràng buộc cứng:** biểu đồ **phải** nằm trên `.panel` đục, không được đặt thẳng lên nền mesh của app. Trên nền mesh, vàng tụt xuống 2.65:1 và aqua 2.94:1 — cả hai đều trượt. Đây là ràng buộc kỹ thuật của bảng màu, không phải lựa chọn thẩm mỹ.
+### Màu biểu đồ (đã kiểm định mù màu, GIỮ NGUYÊN)
+Bảng categorical đã qua **validator mù màu**: xanh `#3987e5`, cam `#d95926`, aqua `#199e70`, vàng `#c98500`, CVD ΔE ≥ 8. Đo lại trên `.panel` tối: 5.43 / 5.09 / 5.80 / 6.43:1, đều vượt xa ngưỡng 3:1 của WCAG 1.4.11. Biểu đồ vẫn đặt trên `.panel`.
 
 Mức rủi ro fraud dùng **status palette** (good/warning/serious/critical) luôn kèm nhãn chữ, không bao giờ chỉ dựa vào màu.
 
-> `CHART_INK` (grid, axis) buộc phải là giá trị màu thật chứ không dùng `var(--token)`: Recharts ghi chúng thành **SVG presentation attribute**, mà trình duyệt không resolve `var()` trong attribute. Nếu đổi `--grid-line` / `--muted-foreground` thì phải sửa tay `chart-colors.ts`.
+> `CHART_INK` (grid, axis, cursor) buộc phải là giá trị màu thật chứ không dùng `var(--token)`: Recharts ghi chúng thành **SVG presentation attribute**, mà trình duyệt không resolve `var()` trong attribute. Nếu đổi `--grid-line` / `--muted-foreground` thì phải sửa tay `chart-colors.ts`.
 
 ---
 
@@ -174,7 +184,7 @@ src/
 ## 6. Chi tiết từng màn hình
 
 ### Công khai & Auth
-- **Landing `/`** — trang giới thiệu sản phẩm.
+- **Landing `/`**: hero với vòng kính 3D, thẻ "Tiered limits" chồng lên hero (hạn mức thật theo hạng KYC, lấy từ seed `transaction_limits`, **không phải bảng giá**), rồi đến các section Ledger, Risk, Compliance và CTA cuối.
 - **Login / Register** — form RHF + Zod. Đăng ký **tự động tạo ví** ngay sau khi thành công. Lưu token, set cookie cờ, điều hướng vào dashboard.
 
 ### Nhóm ứng dụng (API thật)
@@ -188,6 +198,7 @@ src/
 | **Transactions** | Danh sách phân trang, badge trạng thái; click → **chi tiết giao dịch** |
 | **Contacts** | Danh bạ (avatar initials), thêm/xóa, nút chuyển tiền nhanh |
 | **KYC** | Upload tài liệu (chọn loại, số, quốc gia, file); danh sách tài liệu + trạng thái xác minh |
+| **KYC Review** `/admin/kyc` | Chỉ ADMIN (mục menu tự ẩn với người khác, API trả 403). Hàng đợi tài liệu chờ duyệt: chọn bậc cấp (Tier 1–3) rồi **Approve**, hoặc **Reject** kèm lý do. Duyệt không bao giờ hạ bậc; người bị từ chối nộp tài liệu mới là quay lại PENDING. Tài khoản admin được tạo lúc user-service khởi động từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` (mặc định dev: `admin@xupay.local` / `Admin@12345`). |
 | **Settings** | Sửa hồ sơ (RHF+Zod), xem **hạn mức giao dịch** theo tier KYC |
 
 ### Nhóm showcase (dữ liệu MSW)
@@ -199,7 +210,7 @@ src/
 | **Audit Log** | Bảng log bất biến, filter theo category + **ô tìm kiếm debounce**, phân trang |
 
 ### Trạng thái & phản hồi
-Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, **toast** lỗi/thành công, `error.tsx` bắt lỗi render, `not-found.tsx` cho 404.
+Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, **`ErrorState`** (lỗi mạng/5xx, có nút *Try again*) — tách bạch với empty state: chỉ khi backend trả lời "không có" (404, hoặc 400 của payment-service cho ví/giao dịch không tồn tại — xem `isNotFoundError`) mới hiện empty state. Thêm **toast** lỗi/thành công, `error.tsx` bắt lỗi render, `not-found.tsx` cho 404.
 
 ---
 
@@ -224,7 +235,8 @@ Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, 
 ## 8. Các pattern đáng chú ý
 
 - **Idempotency key** — mỗi form thanh toán sinh 1 UUID (qua `useState` lazy init) gắn vào cả header và body; retry cùng key = cùng 1 giao dịch (khớp yêu cầu idempotency của backend).
-- **Số tiền = integer cents** — backend luôn dùng "amountCents" (1 đơn vị = 100 cents); `formatCurrencyFromCents` luôn chia 100 và ép 2 chữ số thập phân, không tin default theo tiền tệ của `Intl`.
+- **Số tiền = integer cents** — backend luôn dùng "amountCents" (1 đơn vị = 100 cents); `formatCurrencyFromCents` luôn chia 100. Tiền viết theo quy ước của chính nó: VND theo `vi-VN` → `11.847.920 ₫` (không `,00`; phần lẻ chỉ hiện khi thật sự có, để không làm tròn ngầm). Tiền tệ khác giữ dạng en-US 2 chữ số lẻ. Số gọn trên biểu đồ cùng locale: `3,7 Tr ₫`.
+- **Session không làm lệch hydration** — token nằm ở localStorage mà server không thấy; `useHasSession()` (`useSyncExternalStore`) trả `false` lúc hydrate rồi cập nhật ngay sau, và `useAuth().user` bị chặn theo nó, nên HTML server và lần render đầu của client luôn khớp.
 - **Next.js 16 async params** — route động (`[walletId]`, `[transactionId]`) nhận `params` là `Promise`, phải `await`.
 - **React Compiler-friendly** — tránh đọc ref khi render, dùng `useWatch` thay `form.watch`, không `setState` trực tiếp trong effect.
 - **Điều hướng mobile** — dưới `md`, sidebar cố định bị ẩn; nút ☰ mở **drawer (Sheet)** dùng lại đúng component Sidebar, tự đóng khi bấm link.
@@ -233,9 +245,9 @@ Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, 
 
 ## 9. Kiểm thử
 
-**29 test** (Vitest + Testing Library + MSW + jsdom), 8 file:
+**31 test** (Vitest + Testing Library + MSW + jsdom), 8 file:
 
-- `format.test.ts` — tiền tệ, số gọn, %, ngày, initials.
+- `format.test.ts` — tiền tệ (VND kiểu vi-VN, phần lẻ không bị làm tròn, USD), số gọn, %, ngày, initials.
 - `mock-data.test.ts` — tính xác định của seed, tính nhất quán số liệu fraud/analytics.
 - `payment-validation.test.ts` — schema Zod chuyển tiền (UUID, số dương, coerce).
 - `RiskBadge` / `StatCard` — component.
@@ -283,7 +295,7 @@ Trong lúc dựng, một số điểm hợp đồng API thực tế **khác tài
 
 - Next.js 16 mới nhất: App Router, Turbopack, `proxy.ts`, async params, React Compiler.
 - Tách bạch **domain thật vs mock** rõ ràng, MSW cô lập hoàn toàn.
-- Design system light-pastel nhất quán bằng token: gradient thương hiệu chia **ba dải hiệu chỉnh theo contrast**, bề mặt kính tách khỏi bề mặt dữ liệu, biểu đồ **kiểm định mù màu** và đo lại trên nền sáng.
+- Design system dark glass nhất quán bằng token: vòng kính 3D (R3F) có fallback tĩnh và chỉ render khi hiển thị, bề mặt kính tách khỏi bề mặt dữ liệu đục, mọi màu chữ đã đo contrast, biểu đồ **kiểm định mù màu** và đo lại trên nền tối.
 - Type-safe từ đầu tới cuối: Zod ↔ RHF ↔ axios ↔ TanStack Query.
-- Chất lượng CI: **lint sạch, `tsc` sạch, build sạch, 29 test xanh, Docker image chạy được**.
+- Chất lượng CI: **lint sạch, `tsc` sạch, build sạch, 31 test xanh, Docker image chạy được**.
 - Chú trọng chi tiết fintech: idempotency, tiền tệ integer-cents, hạn mức KYC, đóng băng ví, audit log.

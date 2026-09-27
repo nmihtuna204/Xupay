@@ -22,11 +22,18 @@ export function Reveal({
   className,
 }: {
   children: React.ReactNode;
-  as?: React.ElementType;
+  // A closed set of HTML tags, not React.ElementType: @react-three/fiber adds
+  // every three.js element (mesh, group...) to the global JSX namespace, and
+  // over that union TypeScript collapses an arbitrary ElementType's props to
+  // `never`.
+  as?: "div" | "p" | "span" | "section" | "h1" | "h2" | "h3";
   delay?: number;
   className?: string;
 }) {
-  const ref = useRef<HTMLElement>(null);
+  // Every allowed tag is a plain block/inline HTMLElement and the ref is only
+  // used for classList, so the element is typed as a div for JSX's sake.
+  const Element = Tag as "div";
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const node = ref.current;
@@ -51,7 +58,7 @@ export function Reveal({
   }, []);
 
   return (
-    <Tag
+    <Element
       ref={ref}
       className={cn("reveal", className)}
       style={delay ? { transitionDelay: `${delay}ms` } : undefined}
@@ -60,6 +67,6 @@ export function Reveal({
       suppressHydrationWarning
     >
       {children}
-    </Tag>
+    </Element>
   );
 }
