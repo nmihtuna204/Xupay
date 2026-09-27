@@ -65,7 +65,7 @@ export function TransferForm() {
       <form onSubmit={form.handleSubmit(onSubmit)} className="panel flex max-w-lg flex-col gap-5 p-6">
         {contactsQuery.data && contactsQuery.data.length > 0 && (
           <div>
-            <p className="mb-2 text-sm font-medium">PaperPlaneTilt to a contact</p>
+            <p className="mb-2 text-sm font-medium">Send to a contact</p>
             <div className="flex flex-wrap gap-2">
               {contactsQuery.data.map((contact) => (
                 <button
@@ -148,7 +148,7 @@ export function TransferForm() {
 
         <Button type="submit" disabled={transferMutation.isPending} className="mt-1">
           {transferMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <PaperPlaneTilt weight="light" />}
-          PaperPlaneTilt money
+          Send money
         </Button>
       </form>
     </Form>

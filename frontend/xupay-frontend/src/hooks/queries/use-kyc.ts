@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { getMyKycDocuments } from "@/lib/api/user-service/kyc";
+import { getMyKycDocuments, getPendingKycDocuments } from "@/lib/api/user-service/kyc";
 import { kycKeys } from "@/lib/query-keys";
 
 export function useKycDocuments() {
@@ -9,5 +9,15 @@ export function useKycDocuments() {
     queryKey: kycKeys.documents(),
     queryFn: getMyKycDocuments,
     staleTime: 30_000,
+  });
+}
+
+/** The review queue. Only fetched for admins: everyone else gets a 403. */
+export function usePendingKycDocuments(enabled: boolean) {
+  return useQuery({
+    queryKey: kycKeys.pending(),
+    queryFn: getPendingKycDocuments,
+    enabled,
+    staleTime: 10_000,
   });
 }

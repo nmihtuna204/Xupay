@@ -138,7 +138,7 @@ export function ProfileForm({ profile }: { profile: ProfileResponse }) {
 
         <Button type="submit" disabled={updateMutation.isPending} className="mt-1 self-start">
           {updateMutation.isPending ? <CircleNotch weight="light" className="animate-spin" /> : <FloppyDisk weight="light" />}
-          FloppyDisk changes
+          Save changes
         </Button>
       </form>
     </Form>

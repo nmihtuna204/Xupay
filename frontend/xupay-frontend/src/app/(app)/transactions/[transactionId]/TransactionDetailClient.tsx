@@ -5,26 +5,29 @@ import { DetailField } from "@/components/common/DetailField";
 import { TransactionStatusBadge } from "@/components/features/payments/TransactionStatusBadge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/common/EmptyState";
+import { ErrorState } from "@/components/common/ErrorState";
 import { formatCurrencyFromCents, formatDate } from "@/lib/format";
 import { useTransaction } from "@/hooks/queries/use-transactions";
+import { isNotFoundError } from "@/lib/api/errors";
 
 export function TransactionDetailClient({ transactionId }: { transactionId: string }) {
   const txQuery = useTransaction(transactionId);
-
-  if (txQuery.isLoading) {
-    return (
-      <>
-        <PageHeader title="Transaction" />
-        <Skeleton className="h-64 rounded-xl" />
-      </>
-    );
-  }
 
   if (!txQuery.data) {
     return (
       <>
         <PageHeader title="Transaction" />
-        <EmptyState title="Transaction not found" />
+        {txQuery.isError && isNotFoundError(txQuery.error) ? (
+          <EmptyState title="Transaction not found" />
+        ) : txQuery.isError ? (
+          <ErrorState
+            title="Couldn't load this transaction"
+            error={txQuery.error}
+            onRetry={() => txQuery.refetch()}
+          />
+        ) : (
+          <Skeleton className="h-64 rounded-xl" />
+        )}
       </>
     );
   }

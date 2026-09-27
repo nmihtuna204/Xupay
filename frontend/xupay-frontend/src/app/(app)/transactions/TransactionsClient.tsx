@@ -5,13 +5,16 @@ import { PageHeader } from "@/components/layout/PageHeader";
 import { TransactionTable } from "@/components/features/payments/TransactionTable";
 import { PaginationControls } from "@/components/common/PaginationControls";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/common/ErrorState";
 import { useAuth } from "@/hooks/use-auth";
 import { useTransactions } from "@/hooks/queries/use-transactions";
+import { isNotFoundError } from "@/lib/api/errors";
 
 const PAGE_SIZE = 10;
 
 export function TransactionsClient() {
-  const { user } = useAuth();
+  const auth = useAuth();
+  const { user } = auth;
   const router = useRouter();
   const searchParams = useSearchParams();
   const page = Number(searchParams.get("page") ?? 0);
@@ -29,18 +32,26 @@ export function TransactionsClient() {
   return (
     <>
       <PageHeader title="Transactions" description="Every transfer, deposit, and withdrawal on your wallet." />
-      <div className="panel p-6">
-        {transactionsQuery.isLoading ? (
+      <div className="panel p-4 sm:p-6">
+        {transactionsQuery.data || isNotFoundError(transactionsQuery.error) ? (
+          <>
+            <TransactionTable transactions={items} />
+            <PaginationControls page={page} hasNextPage={hasNextPage} onPageChange={goToPage} />
+          </>
+        ) : auth.isError ? (
+          <ErrorState title="Couldn't load your account" error={auth.error} onRetry={auth.retry} />
+        ) : transactionsQuery.isError ? (
+          <ErrorState
+            title="Couldn't load your transactions"
+            error={transactionsQuery.error}
+            onRetry={() => transactionsQuery.refetch()}
+          />
+        ) : (
           <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-10 w-full" />
             ))}
           </div>
-        ) : (
-          <>
-            <TransactionTable transactions={items} />
-            <PaginationControls page={page} hasNextPage={hasNextPage} onPageChange={goToPage} />
-          </>
         )}
       </div>
     </>

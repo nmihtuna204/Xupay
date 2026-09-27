@@ -20,6 +20,7 @@ export const contactKeys = {
 export const kycKeys = {
   all: ["kyc"] as const,
   documents: () => [...kycKeys.all, "documents"] as const,
+  pending: () => [...kycKeys.all, "pending"] as const,
 };
 
 export const walletKeys = {

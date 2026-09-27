@@ -1,11 +1,12 @@
 import { z } from "zod";
+import { moneyAmount } from "./AmountForm.schema";
 
 export const transferSchema = z.object({
   recipientUserId: z
     .string()
     .min(1, "Choose or enter a recipient")
     .uuid("Enter a valid user ID (UUID)"),
-  amount: z.coerce.number().positive("Enter an amount greater than 0"),
+  amount: moneyAmount,
   description: z.string().max(200, "Keep it under 200 characters").optional(),
 });
 

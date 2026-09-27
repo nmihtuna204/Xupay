@@ -19,6 +19,19 @@ import {
 import { useLogin } from "@/hooks/mutations/use-auth-mutations";
 import { loginSchema, type LoginFormValues } from "./LoginForm.schema";
 
+/**
+ * `from` comes off the URL, so anyone can craft it. Only same-origin paths are
+ * followed: "/wallets" is fine, but "https://evil.example" or the
+ * protocol-relative "//evil.example" (and its "/\\" spelling, which browsers
+ * normalise to "//") would hand the freshly signed-in user to another site.
+ */
+function safeRedirect(from: string | null): string {
+  if (!from || !from.startsWith("/") || from.startsWith("//") || from.startsWith("/\\")) {
+    return "/dashboard";
+  }
+  return from;
+}
+
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,8 +45,7 @@ export function LoginForm() {
   function onSubmit(values: LoginFormValues) {
     loginMutation.mutate(values, {
       onSuccess: () => {
-        const destination = searchParams.get("from") || "/dashboard";
-        router.push(destination);
+        router.push(safeRedirect(searchParams.get("from")));
       },
       onError: (error) => {
         toast.error(error.message || "Couldn't sign you in. Check your credentials.");
@@ -44,7 +56,7 @@ export function LoginForm() {
   return (
     <Form {...form}>
       <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Welcome back</h1>
+        <h1 className="text-[1.75rem] font-normal leading-tight tracking-[-0.03em]">Welcome back</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Sign in to manage your wallet and transfers.
         </p>

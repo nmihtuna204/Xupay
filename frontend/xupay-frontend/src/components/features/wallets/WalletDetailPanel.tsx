@@ -45,11 +45,12 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
   }
 
   return (
-    <div className="panel p-8 sm:p-10">
+    <div className="panel panel-lit p-6 sm:p-10">
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="kicker">Personal wallet</p>
-          <p className="figure-lg mt-4 text-[clamp(2.25rem,5vw,4rem)] leading-none">
+          {/* Same phone-safe floor and last-resort wrap as the dashboard card. */}
+          <p className="figure-lg mt-4 text-[clamp(2rem,5vw,4rem)] leading-none [overflow-wrap:anywhere]">
             {formatCurrencyFromCents(wallet.balanceCents, wallet.currency)}
           </p>
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">

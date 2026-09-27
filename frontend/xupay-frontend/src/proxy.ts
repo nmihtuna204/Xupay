@@ -27,6 +27,7 @@ const PROTECTED_PREFIXES = [
   "/compliance",
   "/analytics",
   "/audit",
+  "/admin",
 ];
 
 export function proxy(request: NextRequest) {

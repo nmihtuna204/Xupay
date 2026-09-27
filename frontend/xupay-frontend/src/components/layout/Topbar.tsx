@@ -13,17 +13,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MobileNav } from "./MobileNav";
-import { mainNavigation, isNavItemActive } from "@/config/navigation";
+import { mainNavigation, userMenuItems, isNavItemActive } from "@/config/navigation";
 import { useAuth } from "@/hooks/use-auth";
+
+/** Every route with a name: the sidebar's items plus the user-menu ones (Settings). */
+const NAMED_ROUTES = [...mainNavigation.flatMap((group) => group.items), ...userMenuItems];
 
 function useCurrentSection(): string {
   const pathname = usePathname();
-  for (const group of mainNavigation) {
-    for (const item of group.items) {
-      if (isNavItemActive(item, pathname)) return item.label;
-    }
-  }
-  return "";
+  return NAMED_ROUTES.find((item) => isNavItemActive(item, pathname))?.label ?? "";
 }
 
 export function Topbar() {
@@ -32,7 +30,7 @@ export function Topbar() {
   const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : "??";
 
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between border-b border-hairline bg-surface px-4 sm:px-6">
+    <header className="flex h-14 shrink-0 items-center justify-between border-b border-hairline bg-background/70 px-4 backdrop-blur-xl sm:px-6">
       <div className="flex items-center gap-3">
         <MobileNav />
         {/* Breadcrumb: brand · current section. */}
@@ -70,7 +68,7 @@ export function Topbar() {
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/settings">
-              <Gear weight="light" /> Gear
+              <Gear weight="light" /> Settings
             </Link>
           </DropdownMenuItem>
           <DropdownMenuSeparator />

@@ -9,7 +9,16 @@ const TONE: Record<AuditCategory, StatusTone> = {
   ADMIN: "error",
 };
 
+// Explicit labels rather than lowercasing the enum: StatusBadge's CSS
+// `capitalize` would otherwise render the KYC acronym as "Kyc".
+const LABEL: Record<AuditCategory, string> = {
+  AUTH: "Auth",
+  PAYMENT: "Payment",
+  WALLET: "Wallet",
+  KYC: "KYC",
+  ADMIN: "Admin",
+};
+
 export function AuditCategoryBadge({ category }: { category: AuditCategory }) {
-  // DOM label kept lowercase (StatusBadge only capitalizes visually).
-  return <StatusBadge tone={TONE[category]} label={category.toLowerCase()} />;
+  return <StatusBadge tone={TONE[category]} label={LABEL[category]} />;
 }

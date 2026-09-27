@@ -2,6 +2,8 @@ import { userServiceClient } from "../client-factory";
 
 export type KycStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 export type KycTier = "TIER_0" | "TIER_1" | "TIER_2" | "TIER_3";
+/** ADMIN can review KYC documents; everyone else is USER. */
+export type UserRole = "USER" | "ADMIN";
 
 export interface UserResponse {
   id: string;
@@ -11,6 +13,7 @@ export interface UserResponse {
   phone?: string;
   kycStatus: KycStatus;
   kycTier: KycTier;
+  role?: UserRole;
   isActive: boolean;
   createdAt: string;
 }

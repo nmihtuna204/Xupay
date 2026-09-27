@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { useInView } from "motion/react";
 import NumberFlow from "@number-flow/react";
 import { cn } from "@/lib/utils";
-import { formatCurrencyFromCents, moneyFormatOptions } from "@/lib/format";
+import { formatCurrencyFromCents, moneyFormatOptions, moneyLocale } from "@/lib/format";
 
 /** Minor units, exactly as the payment service returns them. */
 const ROWS = [
@@ -24,22 +24,22 @@ const TARGET_CENTS = 1_184_792_000;
  * motion.
  *
  * NumberFlow takes Intl options rather than a finished string, so it is handed
- * the shared moneyFormatOptions() the rest of the app formats with. That keeps
- * the animated figure identical to formatCurrencyFromCents output.
+ * the shared moneyLocale() + moneyFormatOptions() the rest of the app formats
+ * with. That keeps the animated figure identical to formatCurrencyFromCents.
  */
 export function LedgerPanel() {
   const ref = useRef<HTMLDivElement>(null);
   const active = useInView(ref, { once: true, amount: 0.4 });
 
   return (
-    // No .panel here: this now sits inside a .bezel-core on the landing, and a
-    // panel within a bezel core is a card inside a card inside a card.
+    // No .panel here: the landing seats this in a .glass-card, and a panel
+    // inside that would be a card inside a card.
     <div ref={ref} className="p-6 sm:p-7">
       <p className="field-label">Balance</p>
       <p className="figure-lg mt-3 text-[clamp(1.875rem,4.5vw,2.75rem)] leading-none text-foreground">
         <NumberFlow
           value={active ? TARGET_CENTS / 100 : 0}
-          locales="en-US"
+          locales={moneyLocale()}
           format={moneyFormatOptions()}
         />
       </p>

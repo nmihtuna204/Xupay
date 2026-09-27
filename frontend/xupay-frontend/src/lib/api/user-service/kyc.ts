@@ -1,4 +1,5 @@
 import { userServiceClient } from "../client-factory";
+import type { KycTier } from "./auth";
 
 export type DocumentType =
   | "PASSPORT"
@@ -46,5 +47,40 @@ export async function uploadKycDocument(
 
 export async function getMyKycDocuments(): Promise<KycDocumentResponse[]> {
   const { data } = await userServiceClient.get<KycDocumentResponse[]>("/api/kyc/documents");
+  return data;
+}
+
+// ---- Review (ADMIN only; the API answers 403 to anyone else) -------------
+
+export interface ApproveKycRequest {
+  verificationNotes?: string;
+  /** Tier to grant. Never lowers an existing tier; defaults to TIER_1. */
+  upgradeTier?: KycTier;
+}
+
+export async function getPendingKycDocuments(): Promise<KycDocumentResponse[]> {
+  const { data } = await userServiceClient.get<KycDocumentResponse[]>("/api/kyc/pending");
+  return data;
+}
+
+export async function approveKycDocument(
+  documentId: string,
+  payload: ApproveKycRequest
+): Promise<KycDocumentResponse> {
+  const { data } = await userServiceClient.post<KycDocumentResponse>(
+    `/api/kyc/${documentId}/approve`,
+    payload
+  );
+  return data;
+}
+
+export async function rejectKycDocument(
+  documentId: string,
+  verificationNotes: string
+): Promise<KycDocumentResponse> {
+  const { data } = await userServiceClient.post<KycDocumentResponse>(
+    `/api/kyc/${documentId}/reject`,
+    { verificationNotes }
+  );
   return data;
 }

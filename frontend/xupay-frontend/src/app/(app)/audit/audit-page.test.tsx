@@ -19,10 +19,10 @@ describe("Audit Log page (MSW-backed)", () => {
 
     await user.click(screen.getByRole("button", { name: "Payment" }));
 
-    // Every category badge in the filtered table should read "payment".
+    // Every category badge in the filtered table should read "Payment".
     await waitFor(() => {
       const table = screen.getByRole("table");
-      const badges = within(table).getAllByText("payment");
+      const badges = within(table).getAllByText("Payment");
       expect(badges.length).toBeGreaterThan(0);
     });
   });

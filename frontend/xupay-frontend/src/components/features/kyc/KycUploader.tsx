@@ -68,7 +68,7 @@ export function KycUploader() {
       toast.success("Document submitted for review");
       form.reset();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "UploadSimple failed");
+      toast.error(error instanceof Error ? error.message : "Upload failed");
     }
   }
 

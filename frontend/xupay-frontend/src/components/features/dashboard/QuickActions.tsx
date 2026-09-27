@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, Money, PaperPlaneTilt, PiggyBank } from "@phosphor-icons/react/dist/ssr";
 
 const ACTIONS = [
-  { href: "/payments/transfer", label: "PaperPlaneTilt money", icon: PaperPlaneTilt },
+  { href: "/payments/transfer", label: "Send money", icon: PaperPlaneTilt },
   { href: "/payments/deposit", label: "Deposit", icon: PiggyBank },
   { href: "/payments/withdraw", label: "Withdraw", icon: Money },
 ];

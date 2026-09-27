@@ -4,10 +4,38 @@ import type { Metadata } from "next";
 // time, which fails in the offline Docker builder. These need no network.
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/sonner";
 import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "./globals.css";
+
+/*
+ * The dong sign (U+20AB), drawn in Geist's own strokes. Neither Geist face has
+ * it, so without these every VND amount borrowed the sign from Arial or
+ * Consolas. Each file holds that one glyph (built by
+ * scripts/build-dong-font.py), and unicode-range keeps it out of the way: the
+ * face is only fetched where a dong sign appears, and it never becomes the
+ * "first available font" that line-height and ch units are measured from.
+ * No fallback adjustment - there is nothing for it to stand in for.
+ * (Two literal calls on purpose: next/font only accepts object literals.)
+ */
+const dongSans = localFont({
+  src: "../fonts/dong-sans.woff",
+  variable: "--font-dong-sans",
+  weight: "100 900",
+  display: "swap",
+  adjustFontFallback: false,
+  declarations: [{ prop: "unicode-range", value: "U+20AB" }],
+});
+const dongMono = localFont({
+  src: "../fonts/dong-mono.woff",
+  variable: "--font-dong-mono",
+  weight: "100 900",
+  display: "swap",
+  adjustFontFallback: false,
+  declarations: [{ prop: "unicode-range", value: "U+20AB" }],
+});
 
 export const metadata: Metadata = {
   title: "XuPay · Digital Wallet & Payments",
@@ -23,7 +51,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${dongSans.variable} ${dongMono.variable} h-full antialiased`}
       data-scroll-behavior="smooth"
       // Two pre-hydration writers touch <html>: the reveal boot script adds
       // `.reveal-ready`, and next-themes adds the theme class. Both are the

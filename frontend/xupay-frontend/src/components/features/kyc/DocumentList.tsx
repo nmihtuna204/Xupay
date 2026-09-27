@@ -4,7 +4,7 @@ import { KycStatusBadge } from "./KycStatusBadge";
 import { formatDateShort } from "@/lib/format";
 import type { KycDocumentResponse } from "@/lib/api/user-service/kyc";
 
-const DOCUMENT_LABEL: Record<string, string> = {
+export const DOCUMENT_LABEL: Record<string, string> = {
   PASSPORT: "Passport",
   DRIVERS_LICENSE: "Driver's license",
   NATIONAL_ID: "National ID",

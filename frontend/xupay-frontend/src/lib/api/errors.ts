@@ -63,3 +63,16 @@ export function toApiError(error: unknown): ApiError {
   const message = error instanceof Error ? error.message : "Unexpected error";
   return new ApiError(0, "UNKNOWN_ERROR", message);
 }
+
+/**
+ * A lookup that found nothing is an answer ("this user has no wallet yet"),
+ * not a failure. Pages branch on this to show their empty state for it while
+ * every other error gets the retryable error state instead.
+ *
+ * Both codes count: user-service answers a miss with 404, but payment-service
+ * throws IllegalArgumentException for a missing wallet or transaction, which
+ * its GlobalExceptionHandler maps to 400.
+ */
+export function isNotFoundError(error: unknown): boolean {
+  return error instanceof ApiError && (error.statusCode === 404 || error.statusCode === 400);
+}
