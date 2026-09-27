@@ -6,7 +6,9 @@ import com.xupay.payment.dto.TransactionListResponse;
 import com.xupay.payment.dto.TransferRequest;
 import com.xupay.payment.dto.TransferResponse;
 import com.xupay.payment.dto.WithdrawRequest;
+import com.xupay.payment.security.CurrentUser;
 import com.xupay.payment.service.TransactionService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +35,10 @@ public class TransactionController {
      * POST /api/transactions/transfer
      */
     @PostMapping("/transfer")
-    public ResponseEntity<TransferResponse> processTransfer(@Valid @RequestBody TransferRequest request) {
+    public ResponseEntity<TransferResponse> processTransfer(@Valid @RequestBody TransferRequest request,
+                                                            HttpServletRequest http) {
+        // Only the token holder can move money out of their own wallet.
+        CurrentUser.requireSelf(http, request.getFromUserId());
         log.info("REST request to process transfer: from={}, to={}, amount={}",
                 request.getFromUserId(), request.getToUserId(), request.getAmountCents());
         
@@ -52,7 +57,9 @@ public class TransactionController {
      * POST /api/payments/deposit
      */
     @PostMapping("/deposit")
-    public ResponseEntity<TransferResponse> processDeposit(@Valid @RequestBody DepositRequest request) {
+    public ResponseEntity<TransferResponse> processDeposit(@Valid @RequestBody DepositRequest request,
+                                                           HttpServletRequest http) {
+        CurrentUser.requireSelf(http, request.getUserId());
         log.info("REST request to process deposit: user={}, amount={}",
                 request.getUserId(), request.getAmountCents());
 
@@ -70,7 +77,9 @@ public class TransactionController {
      * POST /api/payments/withdraw
      */
     @PostMapping("/withdraw")
-    public ResponseEntity<TransferResponse> processWithdraw(@Valid @RequestBody WithdrawRequest request) {
+    public ResponseEntity<TransferResponse> processWithdraw(@Valid @RequestBody WithdrawRequest request,
+                                                            HttpServletRequest http) {
+        CurrentUser.requireSelf(http, request.getUserId());
         log.info("REST request to process withdrawal: user={}, amount={}",
                 request.getUserId(), request.getAmountCents());
 
@@ -91,9 +100,16 @@ public class TransactionController {
     public ResponseEntity<TransactionListResponse> listTransactions(
             @RequestParam(required = false) UUID userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        log.info("REST request to list transactions: userId={}, page={}, size={}", userId, page, size);
-        return ResponseEntity.ok(transactionService.listTransactions(userId, page, size));
+            @RequestParam(defaultValue = "20") int size,
+            HttpServletRequest http) {
+        // No userId used to mean "every user's transactions". It now means the
+        // caller's own; asking for another user's history is refused.
+        UUID caller = CurrentUser.id(http);
+        if (userId != null) {
+            CurrentUser.requireSelf(http, userId);
+        }
+        log.info("REST request to list transactions: userId={}, page={}, size={}", caller, page, size);
+        return ResponseEntity.ok(transactionService.listTransactions(caller, page, size));
     }
 
     /**
@@ -101,9 +117,11 @@ public class TransactionController {
      * GET /api/transactions/{transactionId}
      */
     @GetMapping("/{transactionId}")
-    public ResponseEntity<TransactionDetailResponse> getTransactionDetail(@PathVariable UUID transactionId) {
+    public ResponseEntity<TransactionDetailResponse> getTransactionDetail(@PathVariable UUID transactionId,
+                                                                          HttpServletRequest http) {
         log.info("REST request to get transaction detail: {}", transactionId);
         TransactionDetailResponse response = transactionService.getTransactionDetail(transactionId);
+        CurrentUser.requireParty(http, response.getFromUserId(), response.getToUserId());
         return ResponseEntity.ok(response);
     }
 
@@ -112,14 +130,15 @@ public class TransactionController {
      * GET /api/transactions/idempotency/{idempotencyKey}
      */
     @GetMapping("/idempotency/{idempotencyKey}")
-    public ResponseEntity<TransferResponse> getTransactionByIdempotencyKey(@PathVariable UUID idempotencyKey) {
+    public ResponseEntity<TransferResponse> getTransactionByIdempotencyKey(@PathVariable UUID idempotencyKey,
+                                                                           HttpServletRequest http) {
         log.info("REST request to get transaction by idempotency key: {}", idempotencyKey);
         TransferResponse response = transactionService.getTransactionByIdempotencyKey(idempotencyKey);
         
         if (response == null) {
             return ResponseEntity.notFound().build();
         }
-        
+        CurrentUser.requireParty(http, response.getFromUserId(), response.getToUserId());
         return ResponseEntity.ok(response);
     }
 }

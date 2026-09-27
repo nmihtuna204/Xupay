@@ -98,7 +98,7 @@ class TransactionServiceDepositWithdrawTest {
     void deposit_createsBalancedLedgerEntries() {
         DepositRequest request = new DepositRequest(UUID.randomUUID(), userId, 50_000L, "Top-up", null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
 
         TransferResponse response = transactionService.processDeposit(request);
 
@@ -136,6 +136,7 @@ class TransactionServiceDepositWithdrawTest {
         TransferResponse cached = TransferResponse.builder()
                 .transactionId(UUID.randomUUID())
                 .idempotencyKey(idempotencyKey)
+                .toUserId(userId)
                 .status(TransactionStatus.COMPLETED)
                 .build();
         when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(cached));
@@ -155,7 +156,7 @@ class TransactionServiceDepositWithdrawTest {
         wallet.setFreezeReason("Fraud investigation");
         DepositRequest request = new DepositRequest(UUID.randomUUID(), userId, 50_000L, null, null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
 
         assertThatThrownBy(() -> transactionService.processDeposit(request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -169,7 +170,7 @@ class TransactionServiceDepositWithdrawTest {
     void deposit_fails_whenWalletNotFound() {
         DepositRequest request = new DepositRequest(UUID.randomUUID(), userId, 50_000L, null, null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> transactionService.processDeposit(request))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -185,7 +186,7 @@ class TransactionServiceDepositWithdrawTest {
     void withdraw_createsBalancedLedgerEntries() {
         WithdrawRequest request = new WithdrawRequest(UUID.randomUUID(), userId, 30_000L, "Cash out", null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.getBalance(wallet.getId())).thenReturn(100_000L);
 
         TransferResponse response = transactionService.processWithdraw(request);
@@ -216,7 +217,7 @@ class TransactionServiceDepositWithdrawTest {
     void withdraw_fails_onInsufficientBalance() {
         WithdrawRequest request = new WithdrawRequest(UUID.randomUUID(), userId, 200_000L, null, null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.getBalance(wallet.getId())).thenReturn(100_000L);
 
         assertThatThrownBy(() -> transactionService.processWithdraw(request))
@@ -231,7 +232,7 @@ class TransactionServiceDepositWithdrawTest {
     void withdraw_fails_whenBalanceNull() {
         WithdrawRequest request = new WithdrawRequest(UUID.randomUUID(), userId, 1_000L, null, null, null);
         when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
-        when(walletRepository.findByUserId(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
         when(walletRepository.getBalance(wallet.getId())).thenReturn(null);
 
         assertThatThrownBy(() -> transactionService.processWithdraw(request))
@@ -246,6 +247,7 @@ class TransactionServiceDepositWithdrawTest {
         TransferResponse cached = TransferResponse.builder()
                 .transactionId(UUID.randomUUID())
                 .idempotencyKey(idempotencyKey)
+                .fromUserId(userId)
                 .status(TransactionStatus.COMPLETED)
                 .build();
         when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(cached));
@@ -255,5 +257,93 @@ class TransactionServiceDepositWithdrawTest {
 
         assertThat(response).isSameAs(cached);
         verify(transactionRepository, never()).save(any());
+    }
+
+    // =========================================================
+    // CONCURRENCY + IDEMPOTENCY GUARDS
+    // =========================================================
+
+    @Test
+    @DisplayName("Withdraw - over the KYC daily send limit is refused before any lock or ledger write")
+    void withdraw_refused_whenOverLimit() {
+        WithdrawRequest request = new WithdrawRequest(UUID.randomUUID(), userId, 5_000_000_00L, null, null, null);
+        when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(userServiceClient.validateUser(userId, 5_000_000_00L, "send"))
+                .thenThrow(new IllegalArgumentException("User validation failed: Would exceed the daily send limit"));
+
+        assertThatThrownBy(() -> transactionService.processWithdraw(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("daily send limit");
+        verify(walletRepository, never()).findByUserIdForUpdate(any());
+        verify(ledgerEntryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Deposit - checked against the daily receive limit")
+    void deposit_validatesReceiveLimit() {
+        DepositRequest request = new DepositRequest(UUID.randomUUID(), userId, 50_000L, null, null, null);
+        when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        transactionService.processDeposit(request);
+
+        verify(userServiceClient).validateUser(userId, 50_000L, "receive");
+    }
+
+    @Test
+    @DisplayName("Withdraw - takes the wallet row lock before checking the balance")
+    void withdraw_locksWalletBeforeBalanceCheck() {
+        WithdrawRequest request = new WithdrawRequest(UUID.randomUUID(), userId, 1_000L, null, null, null);
+        when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.getBalance(wallet.getId())).thenReturn(100_000L);
+
+        transactionService.processWithdraw(request);
+
+        org.mockito.InOrder order = org.mockito.Mockito.inOrder(walletRepository);
+        order.verify(walletRepository).findByUserIdForUpdate(userId);
+        order.verify(walletRepository).getBalance(wallet.getId());
+        verify(walletRepository, never()).findByUserId(any());
+    }
+
+    @Test
+    @DisplayName("Withdraw - a retry that committed while waiting for the lock is replayed, not re-applied")
+    void withdraw_replaysResult_committedWhileWaitingForLock() {
+        UUID idempotencyKey = UUID.randomUUID();
+        TransferResponse committed = TransferResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .idempotencyKey(idempotencyKey)
+                .fromUserId(userId)
+                .status(TransactionStatus.COMPLETED)
+                .build();
+        // First look: nothing yet. Second look (after the lock): the twin request's result.
+        when(idempotencyService.getIfExists(idempotencyKey))
+                .thenReturn(Optional.empty())
+                .thenReturn(Optional.of(committed));
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        TransferResponse response = transactionService.processWithdraw(
+                new WithdrawRequest(idempotencyKey, userId, 1_000L, null, null, null));
+
+        assertThat(response).isSameAs(committed);
+        verify(ledgerEntryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Deposit - a key already used for someone else's transaction is refused")
+    void deposit_rejectsIdempotencyKeyOfAnotherUser() {
+        UUID idempotencyKey = UUID.randomUUID();
+        TransferResponse strangers = TransferResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .idempotencyKey(idempotencyKey)
+                .toUserId(UUID.randomUUID())
+                .status(TransactionStatus.COMPLETED)
+                .build();
+        when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(strangers));
+
+        assertThatThrownBy(() -> transactionService.processDeposit(
+                new DepositRequest(idempotencyKey, userId, 50_000L, null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Idempotency key already used");
     }
 }

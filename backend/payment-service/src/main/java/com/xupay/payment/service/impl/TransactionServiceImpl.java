@@ -23,6 +23,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -70,7 +72,7 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Transaction already processed (idempotent): returning cached response");
-            return cachedResponse.get();
+            return replay(cachedResponse.get(), request.getFromUserId());
         }
 
         // Step 2: Validate users are different
@@ -128,9 +130,18 @@ public class TransactionServiceImpl implements TransactionService {
             throw new IllegalArgumentException("Receiver validation failed: " + e.getMessage());
         }
 
-        // Step 5: Get wallets
-        Wallet fromWallet = walletRepository.findByUserId(request.getFromUserId())
+        // Step 5: Get wallets. The sender's row is locked for the rest of the
+        // transaction (see WalletRepository#findByUserIdForUpdate); only the
+        // debited side is locked, so two users paying each other cannot deadlock.
+        Wallet fromWallet = walletRepository.findByUserIdForUpdate(request.getFromUserId())
                 .orElseThrow(() -> new IllegalArgumentException("From wallet not found: " + request.getFromUserId()));
+
+        // A retry with the same key may have committed while we waited for the lock.
+        var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
+        if (committedMeanwhile.isPresent()) {
+            return replay(committedMeanwhile.get(), request.getFromUserId());
+        }
+
         Wallet toWallet = walletRepository.findByUserId(request.getToUserId())
                 .orElseThrow(() -> new IllegalArgumentException("To wallet not found: " + request.getToUserId()));
 
@@ -146,19 +157,21 @@ public class TransactionServiceImpl implements TransactionService {
         if (fromBalance < request.getAmountCents()) {
             log.warn("Insufficient balance: wallet={}, balance={}, required={}",
                     fromWallet.getId(), fromBalance, request.getAmountCents());
-            
-            // Create FAILED transaction for audit trail
-            Transaction failedTxn = createTransaction(request, fromWallet, toWallet, TransactionStatus.FAILED);
-            transactionRepository.save(failedTxn);
-            
+            // No FAILED row is written here: the exception rolls this
+            // transaction back, so it would never persist - and if it did, it
+            // would claim the idempotency key and make every retry of this
+            // key (after a top-up) replay the failure.
             throw new IllegalArgumentException("Insufficient balance");
         }
 
         // Step 8: Create transaction record with fraud scoring
         Transaction transaction = createTransaction(request, fromWallet, toWallet, TransactionStatus.PROCESSING);
         
-        // Apply fraud evaluation results
-        transaction.setFraudScore(fraudResult.getTotalScore());
+        // Apply fraud evaluation results. Rule penalties are summed and can
+        // exceed 100 (e.g. 50 + 40 + 30 + 20 + 15 with no BLOCK rule hit), but
+        // transactions.fraud_score is CHECKed to 0..100, so an unclamped score
+        // failed the insert and turned a legitimate transfer into a 500.
+        transaction.setFraudScore(Math.min(100, fraudResult.getTotalScore()));
         transaction.setIsFlagged(fraudResult.isShouldFlag());
         if (fraudResult.isShouldFlag()) {
             transaction.setFraudReason("Triggered rules: " + String.join(", ", fraudResult.getTriggeredRules()));
@@ -178,7 +191,7 @@ public class TransactionServiceImpl implements TransactionService {
             transaction = transactionRepository.save(transaction);
             log.info("Transaction completed: {}", transaction.getId());
 
-            // Step 11: [NEW] Record transaction in User Service asynchronously (non-blocking)
+            // Step 11: Record in User Service once the money has actually moved
             recordTransactionInUserService(request.getFromUserId(), request.getAmountCents(), "send", transaction.getId());
             recordTransactionInUserService(request.getToUserId(), request.getAmountCents(), "receive", transaction.getId());
 
@@ -192,9 +205,8 @@ public class TransactionServiceImpl implements TransactionService {
         // Step 12: Build response and cache it
         TransferResponse response = buildTransferResponse(transaction);
         
-        // Cache response for idempotency (24-hour TTL in Redis)
-        idempotencyService.cache(request.getIdempotencyKey(), response);
-        log.info("Transaction response cached: idempotencyKey={}", request.getIdempotencyKey());
+        // Cache response for idempotency (24-hour TTL in Redis), after commit
+        cacheAfterCommit(request.getIdempotencyKey(), response);
         
         return response;
     }
@@ -209,12 +221,24 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Deposit already processed (idempotent): returning cached response");
-            return cachedResponse.get();
+            return replay(cachedResponse.get(), request.getUserId());
         }
 
-        // Step 2: Get wallet and validate state
-        Wallet wallet = walletRepository.findByUserId(request.getUserId())
+        // Step 1b: KYC status + daily receive limit via User Service (throws
+        // IllegalArgumentException -> 400 with the reason). Deposits and
+        // withdrawals used to skip this, so only transfers were ever limited.
+        // Checked before taking the wallet lock: a row lock is never held
+        // across a network call.
+        userServiceClient.validateUser(request.getUserId(), request.getAmountCents(), "receive");
+
+        // Step 2: Get wallet (locked, so a concurrent retry with the same key
+        // waits here instead of racing to the idempotency_key unique index)
+        Wallet wallet = walletRepository.findByUserIdForUpdate(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
+        var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
+        if (committedMeanwhile.isPresent()) {
+            return replay(committedMeanwhile.get(), request.getUserId());
+        }
         validateWallet(wallet, "Wallet");
 
         // Step 3: Create transaction record (TOPUP: no from side, external source)
@@ -275,9 +299,9 @@ public class TransactionServiceImpl implements TransactionService {
             throw new RuntimeException("Deposit failed: " + e.getMessage(), e);
         }
 
-        // Step 7: Build response and cache it for idempotency
+        // Step 7: Build response and cache it for idempotency (after commit)
         TransferResponse response = buildTransferResponse(transaction);
-        idempotencyService.cache(request.getIdempotencyKey(), response);
+        cacheAfterCommit(request.getIdempotencyKey(), response);
         return response;
     }
 
@@ -291,12 +315,21 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Withdrawal already processed (idempotent): returning cached response");
-            return cachedResponse.get();
+            return replay(cachedResponse.get(), request.getUserId());
         }
 
-        // Step 2: Get wallet and validate state
-        Wallet wallet = walletRepository.findByUserId(request.getUserId())
+        // Step 1b: KYC status + daily send limit via User Service, before the
+        // wallet lock (see processDeposit).
+        userServiceClient.validateUser(request.getUserId(), request.getAmountCents(), "send");
+
+        // Step 2: Get wallet, locked until commit: the balance check below is
+        // only meaningful if no other debit can land between it and our entries.
+        Wallet wallet = walletRepository.findByUserIdForUpdate(request.getUserId())
                 .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
+        var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
+        if (committedMeanwhile.isPresent()) {
+            return replay(committedMeanwhile.get(), request.getUserId());
+        }
         validateWallet(wallet, "Wallet");
 
         // Step 3: Check sufficient balance
@@ -368,9 +401,9 @@ public class TransactionServiceImpl implements TransactionService {
             throw new RuntimeException("Withdrawal failed: " + e.getMessage(), e);
         }
 
-        // Step 8: Build response and cache it for idempotency
+        // Step 8: Build response and cache it for idempotency (after commit)
         TransferResponse response = buildTransferResponse(transaction);
-        idempotencyService.cache(request.getIdempotencyKey(), response);
+        cacheAfterCommit(request.getIdempotencyKey(), response);
         return response;
     }
 
@@ -403,6 +436,10 @@ public class TransactionServiceImpl implements TransactionService {
                 .amountCents(transaction.getAmountCents())
                 .currency(transaction.getCurrency())
                 .description(transaction.getDescription())
+                .fromUserId(transaction.getFromUserId())
+                .toUserId(transaction.getToUserId())
+                .fromWalletId(transaction.getFromWalletId())
+                .toWalletId(transaction.getToWalletId())
                 .createdAt(transaction.getCreatedAt())
                 .completedAt(transaction.getCompletedAt())
                 .ledgerEntries(entryDetails)
@@ -528,10 +565,52 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     /**
-     * Record transaction in User Service asynchronously (non-blocking).
-     * Payment confirmation does NOT wait for this call.
+     * Idempotent replay: the stored response for a key, but only to a party of
+     * that transaction. Keys are client-generated UUIDs, so this should never
+     * trip for an honest client; it stops a reused key from returning someone
+     * else's transaction.
+     */
+    private TransferResponse replay(TransferResponse cached, UUID userId) {
+        if (!userId.equals(cached.getFromUserId()) && !userId.equals(cached.getToUserId())) {
+            throw new IllegalArgumentException("Idempotency key already used by another transaction");
+        }
+        return cached;
+    }
+
+    /**
+     * Run once the surrounding transaction has committed, or now if there is
+     * none. Side effects outside this database - the Redis idempotency cache,
+     * the user-service usage counters - must not happen for a transaction
+     * that still rolls back (the balanced-ledger trigger is DEFERRED and only
+     * fires at commit). Caching before commit left Redis holding a COMPLETED
+     * response for money that never moved, and every retry replayed it.
+     */
+    private void afterCommit(Runnable action) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    action.run();
+                }
+            });
+        } else {
+            action.run();
+        }
+    }
+
+    private void cacheAfterCommit(UUID idempotencyKey, TransferResponse response) {
+        afterCommit(() -> idempotencyService.cache(idempotencyKey, response));
+    }
+
+    /**
+     * Record transaction in User Service asynchronously (non-blocking), after
+     * commit. Payment confirmation does NOT wait for this call.
      */
     private void recordTransactionInUserService(UUID userId, Long amountCents, String transactionType, UUID transactionId) {
+        afterCommit(() -> recordTransactionNow(userId, amountCents, transactionType, transactionId));
+    }
+
+    private void recordTransactionNow(UUID userId, Long amountCents, String transactionType, UUID transactionId) {
         userServiceClient.recordTransactionAsync(userId, amountCents, transactionType, transactionId)
                 .thenAccept(response -> {
                     if (response.getSuccess()) {

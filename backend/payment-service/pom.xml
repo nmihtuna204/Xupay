@@ -26,6 +26,8 @@
         <grpc.version>1.63.0</grpc.version>
         <protobuf.version>3.25.1</protobuf.version>
         <grpc-spring-boot.version>3.1.0.RELEASE</grpc-spring-boot.version>
+        <!-- Same version as user-service, which issues the tokens verified here -->
+        <jjwt.version>0.12.5</jjwt.version>
     </properties>
     
     <dependencies>
@@ -99,6 +101,26 @@
             <version>${protobuf.version}</version>
         </dependency>
         
+        <!-- JWT verification: the payment API authenticates callers itself
+             with the token user-service issues (shared HMAC secret). -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
         <!-- javax.annotation API for gRPC (Java 9+) -->
         <dependency>
             <groupId>javax.annotation</groupId>

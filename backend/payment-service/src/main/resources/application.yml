@@ -40,6 +40,13 @@ spring:
 server:
   port: 8082
 
+# JWT verification. Must match user-service's jwt.secret / jwt.issuer exactly:
+# user-service signs the tokens, this service only verifies them. The default
+# is user-service's own local default; Docker passes the shared JWT_SECRET.
+jwt:
+  secret: ${JWT_SECRET:xupay-super-secret-key-minimum-256-bits-for-production-use-only}
+  issuer: xupay-user-service
+
 # gRPC Client Configuration (for calling User Service)
 # Local default: user-service gRPC on 50053. Docker overrides via
 # GRPC_CLIENT_USER_SERVICE_ADDRESS (static://user-service:9091).
