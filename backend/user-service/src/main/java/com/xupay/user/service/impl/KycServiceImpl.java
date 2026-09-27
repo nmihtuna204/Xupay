@@ -6,6 +6,7 @@ import com.xupay.user.dto.request.UploadKycDocumentRequest;
 import com.xupay.user.dto.response.KycDocumentResponse;
 import com.xupay.user.entity.KycDocument;
 import com.xupay.user.entity.User;
+import com.xupay.user.entity.enums.KycStatus;
 import com.xupay.user.entity.enums.KycTier;
 import com.xupay.user.exception.KycDocumentNotFoundException;
 import com.xupay.user.exception.UserNotFoundException;
@@ -47,6 +48,16 @@ public class KycServiceImpl implements KycService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
 
+        // A new document re-opens review. A REJECTED account is blocked from
+        // every payment (User#canTransact), and before this nothing ever moved
+        // it out of REJECTED: re-uploading did not, and approval only acted on
+        // PENDING users, so one rejected photo locked the account for good.
+        if (user.getKycStatus() == KycStatus.REJECTED) {
+            user.setKycStatus(KycStatus.PENDING);
+            userRepository.save(user);
+            log.info("User {} re-submitted KYC after a rejection; back to PENDING", userId);
+        }
+
         // Create KYC document
         KycDocument document = KycDocument.builder()
                 .user(user)
@@ -77,13 +88,17 @@ public class KycServiceImpl implements KycService {
         // Approve document
         document.approve(adminId, request.verificationNotes());
 
-        // Update user KYC status
+        // Update user KYC status. Approval always leaves the user APPROVED and
+        // can raise the tier, never lower it. It used to act only on PENDING
+        // users, so after the first approval (to TIER_1) no later document
+        // could move anyone to TIER_2 or TIER_3.
         User user = document.getUser();
-        if (user.isPending()) {
-            KycTier tierToApprove = request.upgradeTier() != null ? request.upgradeTier() : KycTier.TIER_1;
-            user.approveKyc(tierToApprove, adminId);
+        KycTier requested = request.upgradeTier() != null ? request.upgradeTier() : KycTier.TIER_1;
+        KycTier newTier = requested.compareTo(user.getKycTier()) > 0 ? requested : user.getKycTier();
+        if (user.getKycStatus() != KycStatus.APPROVED || newTier != user.getKycTier()) {
+            user.approveKyc(newTier, adminId);
             userRepository.save(user);
-            log.info("User {} KYC approved with tier: {}", user.getId(), tierToApprove);
+            log.info("User {} KYC approved with tier: {}", user.getId(), newTier);
         }
 
         KycDocument saved = kycDocumentRepository.save(document);

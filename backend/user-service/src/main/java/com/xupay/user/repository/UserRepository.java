@@ -1,6 +1,7 @@
 package com.xupay.user.repository;
 
 import com.xupay.user.entity.User;
+import com.xupay.user.entity.enums.UserRole;
 import com.xupay.user.entity.enums.KycStatus;
 import com.xupay.user.entity.enums.KycTier;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -19,6 +20,10 @@ import java.util.UUID;
  */
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
+
+    /** Just the role, for the per-request authority lookup. */
+    @Query("SELECT u.role FROM User u WHERE u.id = :id")
+    Optional<UserRole> findRoleById(@Param("id") UUID id);
 
     /**
      * Find user by email (unique constraint)

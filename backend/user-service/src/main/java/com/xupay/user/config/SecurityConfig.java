@@ -1,5 +1,6 @@
 package com.xupay.user.config;
 
+import jakarta.servlet.http.HttpServletResponse;
 import com.xupay.user.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -69,6 +70,18 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             
+            // No (valid) token -> 401, not Spring's default 403. The web app
+            // only treats 401 as "session over, sign in again"; with 403 an
+            // expired 24h token left users stranded on error screens instead
+            // of being sent back to the login page.
+            .exceptionHandling(ex -> ex.authenticationEntryPoint((request, response, authException) -> {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write(
+                    "{\"status\":401,\"error\":\"Unauthorized\",\"message\":\"Authentication required\",\"path\":\""
+                    + request.getRequestURI() + "\"}");
+            }))
+
             // Add JWT filter before UsernamePasswordAuthenticationFilter
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

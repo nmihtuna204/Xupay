@@ -2,6 +2,7 @@ package com.xupay.user.entity;
 
 import com.xupay.user.entity.enums.KycStatus;
 import com.xupay.user.entity.enums.KycTier;
+import com.xupay.user.entity.enums.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -62,6 +63,12 @@ public class User {
     @Column(name = "kyc_tier", nullable = false, length = 20)
     @Builder.Default
     private KycTier kycTier = KycTier.TIER_0;
+
+    // Authorisation role (USER / ADMIN), read on every request by JwtAuthenticationFilter
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role", nullable = false, length = 20)
+    @Builder.Default
+    private UserRole role = UserRole.USER;
     
     @Column(name = "kyc_verified_at")
     private ZonedDateTime kycVerifiedAt;

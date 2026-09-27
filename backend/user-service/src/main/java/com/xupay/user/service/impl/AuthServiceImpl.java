@@ -76,7 +76,7 @@ public class AuthServiceImpl implements AuthService {
                 .user(user)
                 .language("en")
                 .timezone("UTC")
-                .currency("USD")
+                .currency("VND")  // every wallet is VND
                 .notificationEmail(true)
                 .notificationSms(true)
                 .notificationPush(true)

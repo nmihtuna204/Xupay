@@ -15,6 +15,14 @@ spring:
       max-lifetime: 1800000
       auto-commit: true
 
+  # V1 is applied by the postgres container's initdb scripts, so an existing
+  # database is baselined at 1 and V2+ run on top of it (same as payment-service).
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    locations: classpath:db/migration
+
   jpa:
     hibernate:
       ddl-auto: update  # Development: update schema automatically
@@ -49,6 +57,12 @@ grpc:
       enabled: false  # Disable Spring Security for gRPC (we use custom JWT interceptor)
 
 # JWT Configuration
+# KYC reviewer bootstrap (see AdminBootstrap). Unset = no admin is created.
+xupay:
+  admin:
+    email: ${XUPAY_ADMIN_EMAIL:}
+    password: ${XUPAY_ADMIN_PASSWORD:}
+
 jwt:
   secret: ${JWT_SECRET:xupay-super-secret-key-minimum-256-bits-for-production-use-only}
   expiration: 86400000  # 24 hours in milliseconds

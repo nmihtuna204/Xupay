@@ -121,7 +121,7 @@ public class LimitServiceImpl implements LimitService {
         if (!limits.isAmountWithinSingleLimit(amountCents)) {
             return new LimitCheckResponse(
                     false,
-                    "Amount exceeds single transaction limit of " + limits.getSingleTransactionMaxDollars(),
+                    "Amount exceeds the single transaction limit of " + vnd(limits.getSingleTransactionMaxCents()),
                     0L
             );
         }
@@ -144,7 +144,7 @@ public class LimitServiceImpl implements LimitService {
                 Long remaining = limits.getDailySendLimitCents() - usage.getTotalSentCents();
                 return new LimitCheckResponse(
                         false,
-                        "Would exceed daily send limit",
+                        "Would exceed the daily send limit of " + vnd(limits.getDailySendLimitCents()),
                         Math.max(0L, remaining)
                 );
             }
@@ -155,7 +155,7 @@ public class LimitServiceImpl implements LimitService {
                 Long remaining = limits.getDailyReceiveLimitCents() - usage.getTotalReceivedCents();
                 return new LimitCheckResponse(
                         false,
-                        "Would exceed daily receive limit",
+                        "Would exceed the daily receive limit of " + vnd(limits.getDailyReceiveLimitCents()),
                         Math.max(0L, remaining)
                 );
             }
@@ -176,5 +176,15 @@ public class LimitServiceImpl implements LimitService {
     public boolean canReceive(UUID userId, Long amountCents) {
         LimitCheckResponse response = checkTransactionAllowed(userId, amountCents, "receive");
         return response.allowed();
+    }
+
+    /**
+     * Cents -> "1.250.000 ₫". These messages reach the user verbatim (the app
+     * shows them in a toast); they used to print the raw cents as dollars,
+     * e.g. "limit of 50.0".
+     */
+    private static String vnd(Long cents) {
+        java.text.NumberFormat format = java.text.NumberFormat.getIntegerInstance(java.util.Locale.forLanguageTag("vi-VN"));
+        return format.format(cents / 100) + " ₫";
     }
 }

@@ -3,10 +3,15 @@ package com.xupay.user.exception;
 import com.xupay.user.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -163,6 +168,64 @@ public class GlobalExceptionHandler {
         );
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
+    }
+
+    /**
+     * @PreAuthorize denials (the admin-only KYC endpoints) -> 403.
+     * They are thrown inside the controller call, so without this they fell
+     * through to the catch-all below and a normal user got a 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        return error(HttpStatus.FORBIDDEN, "You do not have permission to do that", request);
+    }
+
+    /** Contact lookup miss -> 404 (was a bare RuntimeException -> 500). */
+    @ExceptionHandler(ContactNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleContactNotFound(
+            ContactNotFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, ex.getMessage(), request);
+    }
+
+    /** Explicit business-rule rejections (e.g. adding yourself as a contact) -> 400. */
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, ex.getMessage(), request);
+    }
+
+    /** Malformed JSON, a non-UUID path value, a missing parameter -> 400, not 500. */
+    @ExceptionHandler({
+            HttpMessageNotReadableException.class,
+            MethodArgumentTypeMismatchException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<ErrorResponse> handleMalformedRequest(
+            Exception ex, HttpServletRequest request) {
+        log.warn("Malformed request to {}: {}", request.getRequestURI(), ex.getMessage());
+        return error(HttpStatus.BAD_REQUEST, "Malformed request", request);
+    }
+
+    /**
+     * A unique constraint lost to the request - in practice a contact that is
+     * already in the list, or a concurrent duplicate signup -> 409.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        log.warn("Data integrity conflict on {}: {}", request.getRequestURI(), ex.getMostSpecificCause().getMessage());
+        return error(HttpStatus.CONFLICT, "That already exists", request);
+    }
+
+    private ResponseEntity<ErrorResponse> error(HttpStatus status, String message, HttpServletRequest request) {
+        return ResponseEntity.status(status).body(new ErrorResponse(
+            OffsetDateTime.now(),
+            status.value(),
+            status.getReasonPhrase(),
+            message,
+            request.getRequestURI()
+        ));
     }
 
     /**

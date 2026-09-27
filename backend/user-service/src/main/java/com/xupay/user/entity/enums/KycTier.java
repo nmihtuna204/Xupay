@@ -4,31 +4,23 @@ package com.xupay.user.entity.enums;
  * KYC tier levels with transaction limits
  * Maps to database constraint: chk_kyc_tier
  * 
- * Tier Limits:
- * - TIER_0: $100/day (unverified)
- * - TIER_1: $1,000/day (basic KYC)
- * - TIER_2: $10,000/day (enhanced KYC)
- * - TIER_3: $100,000/day (full KYC)
+ * Daily send limits (transaction_limits, VND; see migration V3):
+ * - TIER_0:     2,500,000 VND (unverified)
+ * - TIER_1:    25,000,000 VND (basic KYC)
+ * - TIER_2:   250,000,000 VND (enhanced KYC)
+ * - TIER_3: 2,500,000,000 VND (full KYC)
  */
 public enum KycTier {
-    /**
-     * Unverified user - $100/day limit
-     */
+    /** Unverified user */
     TIER_0,
     
-    /**
-     * Basic KYC - $1,000/day limit
-     */
+    /** Basic KYC */
     TIER_1,
     
-    /**
-     * Enhanced KYC - $10,000/day limit
-     */
+    /** Enhanced KYC */
     TIER_2,
     
-    /**
-     * Full KYC - $100,000/day limit
-     */
+    /** Full KYC */
     TIER_3;
     
     /**

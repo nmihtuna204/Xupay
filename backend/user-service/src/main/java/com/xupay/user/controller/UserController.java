@@ -6,6 +6,7 @@ import com.xupay.user.dto.request.UpdateProfileRequest;
 import com.xupay.user.dto.response.*;
 import com.xupay.user.entity.User;
 import com.xupay.user.entity.UserContact;
+import com.xupay.user.exception.ContactNotFoundException;
 import com.xupay.user.exception.UserNotFoundException;
 import com.xupay.user.mapper.ContactMapper;
 import com.xupay.user.mapper.UserMapper;
@@ -143,6 +144,12 @@ public class UserController {
             Principal principal) {
         UUID userId = UUID.fromString(principal.getName());
         log.info("User {} adding contact {}", userId, request.contactUserId());
+
+        // The table CHECKs this too, but as a constraint violation it surfaced
+        // as a 500; say what is wrong instead.
+        if (userId.equals(request.contactUserId())) {
+            throw new IllegalArgumentException("You can't add yourself as a contact");
+        }
         
         // Fetch both users
         User user = userRepository.findById(userId)
@@ -175,7 +182,7 @@ public class UserController {
         log.info("User {} removing contact {}", userId, contactId);
         
         UserContact contact = userContactRepository.findById(contactId)
-                .orElseThrow(() -> new RuntimeException("Contact not found"));
+                .orElseThrow(() -> new ContactNotFoundException(contactId));
         
         // Security check: only owner can delete
         if (!contact.getUser().getId().equals(userId)) {

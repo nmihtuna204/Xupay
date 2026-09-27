@@ -1,6 +1,9 @@
 package com.xupay.user.security;
 
 import com.xupay.user.service.JwtService;
+import com.xupay.user.repository.UserRepository;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.List;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +32,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserRepository userRepository;
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
@@ -62,11 +66,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // Set authentication in SecurityContext
             if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+                // The role is read from the database rather than a token claim,
+                // so promoting or demoting an admin takes effect on the next
+                // request instead of when the 24h token expires. A token for a
+                // user that no longer exists authenticates nobody.
+                var role = userRepository.findRoleById(userId);
+                if (role.isEmpty()) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                         userId.toString(),   // Principal (user ID as string for Principal#getName())
                         token,               // Credentials (token for downstream use)
-                        Collections.emptyList()  // Authorities (roles - can add later)
+                        List.of(new SimpleGrantedAuthority("ROLE_" + role.get().name()))
                     );
 
                 // Set request details

@@ -5,6 +5,7 @@ import com.xupay.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -51,19 +52,26 @@ public interface DailyUsageRepository extends JpaRepository<DailyUsage, UUID> {
 
     /**
      * Increment sent amount (UPSERT logic with native query)
-     * This is thread-safe for concurrent updates
+     * This is thread-safe for concurrent updates.
+     *
+     * @Transactional here, not on the caller: the only caller is the gRPC
+     * RecordTransaction handler, which runs outside any transaction, and a
+     * @Modifying query without one fails with TransactionRequiredException.
+     * The columns are the per-direction counters the table actually has
+     * (there is no transaction_count column).
      */
+    @Transactional
     @Modifying
     @Query(value = """
-        INSERT INTO daily_usage (id, user_id, usage_date, total_sent_cents, 
-                                 total_received_cents, transaction_count, 
+        INSERT INTO daily_usage (id, user_id, usage_date, total_sent_cents, total_sent_count,
+                                 total_received_cents, total_received_count,
                                  created_at, updated_at)
-        VALUES (gen_random_uuid(), :userId, :usageDate, :amountCents, 0, 1, 
+        VALUES (gen_random_uuid(), :userId, :usageDate, :amountCents, 1, 0, 0,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (user_id, usage_date)
         DO UPDATE SET 
             total_sent_cents = daily_usage.total_sent_cents + :amountCents,
-            transaction_count = daily_usage.transaction_count + 1,
+            total_sent_count = daily_usage.total_sent_count + 1,
             updated_at = CURRENT_TIMESTAMP
         """, nativeQuery = true)
     void incrementSentAmount(
@@ -75,17 +83,18 @@ public interface DailyUsageRepository extends JpaRepository<DailyUsage, UUID> {
     /**
      * Increment received amount (UPSERT logic with native query)
      */
+    @Transactional
     @Modifying
     @Query(value = """
-        INSERT INTO daily_usage (id, user_id, usage_date, total_sent_cents, 
-                                 total_received_cents, transaction_count, 
+        INSERT INTO daily_usage (id, user_id, usage_date, total_sent_cents, total_sent_count,
+                                 total_received_cents, total_received_count,
                                  created_at, updated_at)
-        VALUES (gen_random_uuid(), :userId, :usageDate, 0, :amountCents, 1, 
+        VALUES (gen_random_uuid(), :userId, :usageDate, 0, 0, :amountCents, 1,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (user_id, usage_date)
         DO UPDATE SET 
             total_received_cents = daily_usage.total_received_cents + :amountCents,
-            transaction_count = daily_usage.transaction_count + 1,
+            total_received_count = daily_usage.total_received_count + 1,
             updated_at = CURRENT_TIMESTAMP
         """, nativeQuery = true)
     void incrementReceivedAmount(

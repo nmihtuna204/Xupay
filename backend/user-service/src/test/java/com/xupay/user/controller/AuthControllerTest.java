@@ -9,6 +9,7 @@ import com.xupay.user.dto.response.UserResponse;
 import com.xupay.user.entity.User;
 import com.xupay.user.entity.enums.KycStatus;
 import com.xupay.user.entity.enums.KycTier;
+import com.xupay.user.entity.enums.UserRole;
 import com.xupay.user.mapper.UserMapper;
 import com.xupay.user.repository.UserRepository;
 import com.xupay.user.service.AuthService;
@@ -92,7 +93,8 @@ class AuthControllerTest {
             KycStatus.PENDING,
             KycTier.TIER_0,
             true,
-            OffsetDateTime.now()
+            OffsetDateTime.now(),
+            UserRole.USER
         );
 
         AuthResponse authResponse = new AuthResponse(
@@ -133,7 +135,8 @@ class AuthControllerTest {
             KycStatus.APPROVED,
             KycTier.TIER_1,
             true,
-            OffsetDateTime.now()
+            OffsetDateTime.now(),
+            UserRole.USER
         );
 
         AuthResponse authResponse = new AuthResponse(
@@ -204,7 +207,8 @@ class AuthControllerTest {
             KycStatus.APPROVED, 
             KycTier.TIER_2, 
             true, 
-            OffsetDateTime.now()
+            OffsetDateTime.now(),
+            UserRole.USER
         );
 
         // 4. Mock the REPOSITORY

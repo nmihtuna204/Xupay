@@ -6,6 +6,7 @@ import com.xupay.user.dto.request.RejectKycRequest;
 import com.xupay.user.dto.request.UploadKycDocumentRequest;
 import com.xupay.user.dto.response.KycDocumentResponse;
 import com.xupay.user.entity.enums.DocumentType;
+import com.xupay.user.repository.UserRepository;
 import com.xupay.user.service.JwtService;
 import com.xupay.user.service.KycService;
 import org.junit.jupiter.api.DisplayName;
@@ -52,6 +53,9 @@ class KycControllerTest {
 
     @MockBean
     private JwtService jwtService;
+
+    @MockBean
+    private UserRepository userRepository; // JwtAuthenticationFilter reads roles from it
 
     @MockBean
     private JpaMetamodelMappingContext jpaMappingContext;

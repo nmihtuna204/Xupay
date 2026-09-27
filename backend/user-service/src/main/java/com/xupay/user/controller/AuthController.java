@@ -107,7 +107,8 @@ public class AuthController {
             user.getKycStatus(),
             user.getKycTier(),
             user.getIsActive(),
-            user.getCreatedAt().toOffsetDateTime()
+            user.getCreatedAt().toOffsetDateTime(),
+            user.getRole()
         );
         
         return ResponseEntity.ok(response);

@@ -16,6 +16,10 @@ spring:
     console:
       enabled: false
 
+  # The migrations are PostgreSQL SQL; tests build the schema from the entities.
+  flyway:
+    enabled: false
+
 # JWT configuration for tests
 jwt:
   secret: test-secret-key-minimum-256-bits-for-junit-testing-purposes-only-do-not-use-in-production
