@@ -136,6 +136,11 @@ services:
       JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!}
       JWT_EXPIRATION: 86400000  # 24 hours
 
+      # KYC reviewer, created (or promoted) at startup - see AdminBootstrap.
+      # Local-dev default only; set ADMIN_EMAIL / ADMIN_PASSWORD in .env.
+      XUPAY_ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@xupay.local}
+      XUPAY_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@12345}
+
       # gRPC Server
       GRPC_SERVER_PORT: 9091
 
@@ -187,6 +192,10 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d1sP@ss2025!}
       SPRING_DATA_REDIS_TIMEOUT: 2000
+
+      # JWT - the same secret user-service signs with; payment-service
+      # verifies every request's token with it.
+      JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!}
 
       # gRPC Client -> User Service
       GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service:9091
