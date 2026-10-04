@@ -1,7 +1,7 @@
 import { type ReactElement, type ReactNode } from "react";
 import { render, type RenderOptions } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { setSession } from "@/lib/session";
+import { markSignedIn } from "@/lib/session";
 import type { UserResponse } from "@/lib/api/user-service/auth";
 
 /** A QueryClient with retries off and caching disabled for deterministic tests. */
@@ -37,7 +37,7 @@ export const TEST_USER: UserResponse = {
   createdAt: "2026-01-01T00:00:00.000Z",
 };
 
-/** Writes a token so `getToken()` is truthy and auth-gated queries fire. */
-export function seedAuthToken() {
-  setSession("test-jwt-token");
+/** Marks the session signed in so `useHasSession()` is true and auth-gated queries fire. */
+export function seedSession() {
+  markSignedIn();
 }

@@ -6,7 +6,12 @@ const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pd
 export const kycUploadSchema = z.object({
   documentType: z.enum(["PASSPORT", "DRIVERS_LICENSE", "NATIONAL_ID", "UTILITY_BILL", "SELFIE"]),
   documentNumber: z.string().max(64).optional(),
-  documentCountry: z.string().max(3).optional(),
+  // The API requires exactly three letters (ISO 3166-1 alpha-3); "VN" used to
+  // pass here and come back as a raw "Validation failed" toast.
+  documentCountry: z
+    .string()
+    .optional()
+    .refine((v) => !v || /^[A-Za-z]{3}$/.test(v), "Use a 3-letter code, e.g. VNM"),
   file: z
     .instanceof(File, { message: "Choose a file" })
     .refine((f) => f.size <= MAX_FILE_BYTES, "File must be under 5MB")

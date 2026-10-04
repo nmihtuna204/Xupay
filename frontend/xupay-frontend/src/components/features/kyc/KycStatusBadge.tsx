@@ -5,6 +5,7 @@ const TONE: Record<DocumentVerificationStatus, StatusTone> = {
   APPROVED: "success",
   PENDING: "warning",
   REJECTED: "error",
+  EXPIRED: "neutral",
 };
 
 export function KycStatusBadge({ status }: { status: DocumentVerificationStatus }) {

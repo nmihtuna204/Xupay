@@ -1,6 +1,7 @@
 import { paymentServiceClient } from "../client-factory";
 
-export type TransactionStatus = "PROCESSING" | "COMPLETED" | "FAILED" | "BLOCKED" | "REVIEW";
+/** payment-service TransactionStatus; a fraud block is a 422, never a stored status. */
+export type TransactionStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED" | "CANCELLED" | "REVERSED";
 
 export interface TransferRequest {
   idempotencyKey: string;

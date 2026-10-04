@@ -25,17 +25,26 @@ export function DocumentList({ documents }: { documents: KycDocumentResponse[] }
   return (
     <div className="flex flex-col gap-2">
       {documents.map((doc) => (
-        <div key={doc.id} className="panel flex items-center justify-between p-4">
-          <div className="flex items-center gap-3">
-            <span className="flex size-9 items-center justify-center rounded-lg bg-surface-hover">
-              <FileText weight="light" className="size-4 text-muted-foreground" />
-            </span>
-            <div>
-              <p className="text-sm font-medium">{DOCUMENT_LABEL[doc.documentType] ?? doc.documentType}</p>
-              <p className="text-xs text-muted-foreground">Submitted {formatDateShort(doc.createdAt)}</p>
+        <div key={doc.id} className="panel p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-surface-hover">
+                <FileText weight="light" className="size-4 text-muted-foreground" />
+              </span>
+              <div>
+                <p className="text-sm font-medium">{DOCUMENT_LABEL[doc.documentType] ?? doc.documentType}</p>
+                <p className="text-xs text-muted-foreground">Submitted {formatDateShort(doc.createdAt)}</p>
+              </div>
             </div>
+            <KycStatusBadge status={doc.verificationStatus} />
           </div>
-          <KycStatusBadge status={doc.verificationStatus} />
+          {/* The reviewer is told "the user sees this reason", so show it:
+              without it a rejected user has no idea what to fix. */}
+          {doc.verificationStatus === "REJECTED" && doc.verificationNotes && (
+            <p className="mt-3 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">Reason:</span> {doc.verificationNotes}
+            </p>
+          )}
         </div>
       ))}
     </div>

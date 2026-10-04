@@ -90,9 +90,19 @@ export function formatPercent(fraction: number, digits = 1): string {
   return `${(fraction * 100).toFixed(digits)}%`;
 }
 
+/**
+ * A date-only string ("2026-09-30") is a calendar date, but new Date() reads
+ * it as midnight UTC, so anywhere west of UTC it printed as the day before.
+ * It is read as local midnight instead; full timestamps parse as usual.
+ */
+function parseDate(iso: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+  return dateOnly ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3])) : new Date(iso);
+}
+
 export function formatDate(iso?: string): string {
   if (!iso) return "-";
-  const date = new Date(iso);
+  const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
@@ -102,7 +112,7 @@ export function formatDate(iso?: string): string {
 
 export function formatDateShort(iso?: string): string {
   if (!iso) return "-";
-  const date = new Date(iso);
+  const date = parseDate(iso);
   if (Number.isNaN(date.getTime())) return "-";
   return new Intl.DateTimeFormat("en-US", { dateStyle: "medium" }).format(date);
 }

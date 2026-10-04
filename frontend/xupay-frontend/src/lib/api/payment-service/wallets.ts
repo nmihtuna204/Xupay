@@ -1,6 +1,7 @@
 import { paymentServiceClient } from "../client-factory";
 
-export type WalletType = "PERSONAL" | "MERCHANT" | "ESCROW";
+/** payment-service WalletType ("ESCROW" was never one: the API answered it with a 400). */
+export type WalletType = "PERSONAL" | "BUSINESS" | "MERCHANT";
 
 export interface WalletBalanceResponse {
   walletId: string;

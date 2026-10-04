@@ -101,7 +101,16 @@ export default function CompliancePage() {
                       className="cursor-pointer"
                       onClick={() => setSelectedId(report.id)}
                     >
-                      <TableCell className="font-mono text-xs">{report.reference}</TableCell>
+                      <TableCell className="font-mono text-xs">
+                        {/* The row's click is mouse-only; this is the keyboard way in. */}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedId(report.id)}
+                          className="hover:underline"
+                        >
+                          {report.reference}
+                        </button>
+                      </TableCell>
                       <TableCell className="font-medium">{report.subjectName}</TableCell>
                       <TableCell className="max-w-[240px] truncate text-muted-foreground">
                         {report.reason}

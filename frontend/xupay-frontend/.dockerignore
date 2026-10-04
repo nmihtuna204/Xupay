@@ -1,0 +1,17 @@
+# The image installs its own Linux dependencies (npm ci in the deps stage) and
+# builds from source. Without this file, `COPY . .` sent the host's
+# node_modules (Windows-native SWC, lightningcss and oxide binaries included)
+# and .next into the build and laid them over the Linux install.
+node_modules
+.next
+out
+coverage
+tsconfig.tsbuildinfo
+next-env.d.ts
+npm-debug.log*
+
+# Local secrets never belong in an image; NEXT_PUBLIC_* come in as build args.
+.env*.local
+
+Dockerfile
+.dockerignore

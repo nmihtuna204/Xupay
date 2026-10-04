@@ -12,12 +12,22 @@ import { isNotFoundError } from "@/lib/api/errors";
 
 const PAGE_SIZE = 10;
 
+/**
+ * The zero-based page from `?page=`. Anything else - "abc", "-3", "1.5" -
+ * is page 0: Number() alone gave NaN ("Page NaN", a 400 from the API) or a
+ * negative page whose Previous button kept counting down.
+ */
+export function parsePage(value: string | null): number {
+  const page = Number(value ?? 0);
+  return Number.isInteger(page) && page > 0 ? page : 0;
+}
+
 export function TransactionsClient() {
   const auth = useAuth();
   const { user } = auth;
   const router = useRouter();
   const searchParams = useSearchParams();
-  const page = Number(searchParams.get("page") ?? 0);
+  const page = parsePage(searchParams.get("page"));
 
   const transactionsQuery = useTransactions({ userId: user?.id, page, size: PAGE_SIZE });
   const items = transactionsQuery.data?.items ?? [];

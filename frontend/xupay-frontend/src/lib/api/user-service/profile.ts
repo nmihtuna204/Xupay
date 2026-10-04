@@ -40,13 +40,15 @@ export interface UserLimitsResponse {
   canReceiveMerchantPayments: boolean;
 }
 
+/** Shape of user-service DailyUsageResponse (GET /api/users/me/daily-usage). */
 export interface DailyUsageResponse {
-  userId: string;
   usageDate: string;
   totalSentCents: number;
-  totalSentCount: number;
   totalReceivedCents: number;
-  totalReceivedCount: number;
+  /** Sends and receives today. */
+  transactionCount: number;
+  dailySendLimitCents: number;
+  remainingSendLimitCents: number;
 }
 
 export async function getMyProfile(): Promise<ProfileResponse> {

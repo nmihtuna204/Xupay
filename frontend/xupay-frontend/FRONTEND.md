@@ -73,7 +73,7 @@ src/app/
 
 ### Bảo vệ route (server-side)
 
-Next.js 16 đổi tên `middleware.ts` → **`proxy.ts`** (hàm export tên `proxy`). File này chặn mọi route trong nhóm `(app)`: nếu không có cookie `xupay_session` → redirect về `/login`. Cookie này **chỉ là cờ non-sensitive**, JWT thật nằm ở `localStorage` và được axios interceptor gắn vào header. Kiểm tra phân quyền thực sự vẫn nằm ở mỗi API call qua Bearer token.
+Next.js 16 đổi tên `middleware.ts` → **`proxy.ts`** (hàm export tên `proxy`). File này chặn mọi route trong nhóm `(app)`: nếu không có cookie `xupay_session` → redirect về `/login`. Cookie này **chỉ là cờ non-sensitive**. JWT thật là cookie `xupay_token` **HttpOnly + SameSite=Strict** do user-service đặt khi đăng nhập: JavaScript (kể cả mã XSS) không đọc được, trình duyệt tự gửi kèm mỗi API call (axios `withCredentials`). Kiểm tra phân quyền thực sự vẫn nằm ở mỗi API call.
 
 ---
 
@@ -170,7 +170,7 @@ src/
 │   │                    #   payments, kyc, profile, contacts)
 │   ├── format.ts        # tiền tệ, số gọn, %, ngày, initials
 │   ├── query-keys.ts    # khóa cache tập trung
-│   └── session.ts       # token localStorage + cookie cờ
+│   └── session.ts       # cờ "đã đăng nhập" (localStorage + cookie cờ), không chứa token
 ├── mocks/               # MSW: browser.ts, server.ts, seed.ts, data/, handlers/
 ├── providers/           # QueryProvider, MockProvider
 ├── store/               # session-store (Zustand)
@@ -185,7 +185,7 @@ src/
 
 ### Công khai & Auth
 - **Landing `/`**: hero với vòng kính 3D, thẻ "Tiered limits" chồng lên hero (hạn mức thật theo hạng KYC, lấy từ seed `transaction_limits`, **không phải bảng giá**), rồi đến các section Ledger, Risk, Compliance và CTA cuối.
-- **Login / Register** — form RHF + Zod. Đăng ký **tự động tạo ví** ngay sau khi thành công. Lưu token, set cookie cờ, điều hướng vào dashboard.
+- **Login / Register** — form RHF + Zod. Đăng ký **tự động tạo ví** ngay sau khi thành công. Server đặt cookie token HttpOnly; frontend chỉ bật cờ phiên rồi điều hướng vào dashboard. Sai mật khẩu nhiều lần → server trả 429, form hiện thông báo chờ bao lâu. Đăng xuất gọi `POST /api/auth/logout`: token bị thu hồi ở cả hai service, cookie bị xóa.
 
 ### Nhóm ứng dụng (API thật)
 | Màn hình | Mô tả |
@@ -222,7 +222,7 @@ Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, 
 
 ### Axios (2 client)
 `client-factory.ts` tạo 1 client dùng chung cho cả 2 service với:
-- **Request interceptor** gắn `Authorization: Bearer <token>`.
+- **Không gắn token**: client dùng `withCredentials: true` để trình duyệt gửi cookie `xupay_token`, kèm header `X-Requested-With: XMLHttpRequest` — backend chỉ chấp nhận cookie trên request thay đổi dữ liệu khi có header này (chống CSRF từ origin khác).
 - **Response interceptor** chuẩn hóa lỗi; nếu 401 → xóa session + đẩy về `/login`.
 
 ### MSW (4 domain showcase)
@@ -236,7 +236,7 @@ Mọi trang có: **skeleton loading** per-query, **empty state** thân thiện, 
 
 - **Idempotency key** — mỗi form thanh toán sinh 1 UUID (qua `useState` lazy init) gắn vào cả header và body; retry cùng key = cùng 1 giao dịch (khớp yêu cầu idempotency của backend).
 - **Số tiền = integer cents** — backend luôn dùng "amountCents" (1 đơn vị = 100 cents); `formatCurrencyFromCents` luôn chia 100. Tiền viết theo quy ước của chính nó: VND theo `vi-VN` → `11.847.920 ₫` (không `,00`; phần lẻ chỉ hiện khi thật sự có, để không làm tròn ngầm). Tiền tệ khác giữ dạng en-US 2 chữ số lẻ. Số gọn trên biểu đồ cùng locale: `3,7 Tr ₫`.
-- **Session không làm lệch hydration** — token nằm ở localStorage mà server không thấy; `useHasSession()` (`useSyncExternalStore`) trả `false` lúc hydrate rồi cập nhật ngay sau, và `useAuth().user` bị chặn theo nó, nên HTML server và lần render đầu của client luôn khớp.
+- **Session không làm lệch hydration** — cờ phiên nằm ở localStorage mà server không thấy; `useHasSession()` (`useSyncExternalStore`) trả `false` lúc hydrate rồi cập nhật ngay sau, và `useAuth().user` bị chặn theo nó, nên HTML server và lần render đầu của client luôn khớp.
 - **Next.js 16 async params** — route động (`[walletId]`, `[transactionId]`) nhận `params` là `Promise`, phải `await`.
 - **React Compiler-friendly** — tránh đọc ref khi render, dùng `useWatch` thay `form.watch`, không `setState` trực tiếp trong effect.
 - **Điều hướng mobile** — dưới `md`, sidebar cố định bị ẩn; nút ☰ mở **drawer (Sheet)** dùng lại đúng component Sidebar, tự đóng khi bấm link.

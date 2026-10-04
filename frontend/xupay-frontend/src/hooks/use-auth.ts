@@ -25,9 +25,10 @@ export function useAuth() {
   }, [query.isError, clear]);
 
   // Every consumer lives under the (app) group, which proxy.ts only serves to
-  // a request carrying the session cookie. A cookie with no token behind it
-  // (site data partly cleared) is a dead session: nothing can authenticate,
-  // so treat it exactly like the 401 path in client-factory does.
+  // a request carrying the session cookie. A cookie without the matching
+  // localStorage flag (site data partly cleared, or a session from before
+  // the token moved into an HttpOnly cookie) is treated as signed out,
+  // exactly like the 401 path in client-factory: sign in again.
   useEffect(() => {
     if (hydrated && !hasSession) {
       clearSession();

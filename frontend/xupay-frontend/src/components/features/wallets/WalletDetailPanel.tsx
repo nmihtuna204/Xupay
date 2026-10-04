@@ -26,8 +26,16 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
   const freezeMutation = useFreezeWallet(wallet.walletId);
 
   function copyId() {
-    navigator.clipboard.writeText(wallet.walletId);
-    toast.success("Wallet ID copied");
+    // The clipboard API is async, can be refused, and does not exist on a
+    // non-HTTPS origin: report what actually happened, not "copied" regardless.
+    if (!navigator.clipboard) {
+      toast.error("Copying isn't available here. Select the ID to copy it.");
+      return;
+    }
+    navigator.clipboard.writeText(wallet.walletId).then(
+      () => toast.success("Wallet ID copied"),
+      () => toast.error("Couldn't copy the wallet ID")
+    );
   }
 
   function toggleFreeze() {
@@ -54,7 +62,7 @@ export function WalletDetailPanel({ wallet }: { wallet: WalletBalanceResponse })
             {formatCurrencyFromCents(wallet.balanceCents, wallet.currency)}
           </p>
           <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
-            <button onClick={copyId} className="flex items-center gap-1 hover:text-foreground">
+            <button type="button" onClick={copyId} className="flex items-center gap-1 hover:text-foreground">
               {wallet.walletId} <Copy weight="light" className="size-3" />
             </button>
             <span>·</span>

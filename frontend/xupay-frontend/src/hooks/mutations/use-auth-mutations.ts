@@ -10,22 +10,23 @@ import {
   type RegisterRequest,
 } from "@/lib/api/user-service/auth";
 import { createWallet } from "@/lib/api/payment-service/wallets";
-import { setSession, clearSession } from "@/lib/session";
+import { markSignedIn, clearSession } from "@/lib/session";
 import { authKeys, walletKeys } from "@/lib/query-keys";
 import { useSessionStore } from "@/store/session-store";
 
 /**
- * Login/register both return only { token, userId, email } — no nested
- * user object (verified against the live backend, which diverges from the
- * API docs). So after storing the token we always follow up with
- * GET /api/auth/me to hydrate the full user for the session store + cache.
+ * Login/register set the HttpOnly token cookie and return only
+ * { token, userId, email } — no nested user object. The web app ignores the
+ * body's token (it is there for scripts and API clients) and never stores
+ * it: the cookie authenticates every call. So after a successful sign-in we
+ * mark the session and follow up with GET /api/auth/me to hydrate the full
+ * user for the session store + cache.
  */
 async function completeAuth(
-  token: string,
   queryClient: ReturnType<typeof useQueryClient>,
   setSessionState: (user: Awaited<ReturnType<typeof getCurrentUser>>) => void
 ) {
-  setSession(token);
+  markSignedIn();
   const user = await getCurrentUser();
   setSessionState(user);
   queryClient.setQueryData(authKeys.currentUser(), user);
@@ -38,7 +39,7 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: (payload: LoginRequest) => loginRequest(payload),
-    onSuccess: (data) => completeAuth(data.token, queryClient, setSessionState),
+    onSuccess: () => completeAuth(queryClient, setSessionState),
   });
 }
 
@@ -48,8 +49,8 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: (payload: RegisterRequest) => registerRequest(payload),
-    onSuccess: async (data) => {
-      const user = await completeAuth(data.token, queryClient, setSessionState);
+    onSuccess: async () => {
+      const user = await completeAuth(queryClient, setSessionState);
       // The backend does not auto-provision a wallet on signup (verified:
       // GET /api/wallets/user/:id 400s "Wallet not found" right after
       // register) — create one so the dashboard isn't empty on first login.
@@ -69,6 +70,8 @@ export function useLogout() {
   const clearSessionState = useSessionStore((s) => s.clear);
 
   return useMutation({
+    // Server side: revokes this session's token (in both services) and
+    // deletes the cookie. Other devices stay signed in.
     mutationFn: logoutRequest,
     onSettled: () => {
       clearSession();

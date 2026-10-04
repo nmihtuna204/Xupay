@@ -38,7 +38,19 @@ export default function DashboardPage() {
       ) : auth.isError ? (
         <ErrorState title="Couldn't load your account" error={auth.error} onRetry={auth.retry} />
       ) : walletMissing ? (
-        <EmptyState title="No wallet found" description="A wallet is created automatically on signup." />
+        // Reached only when signup's automatic wallet creation failed (or the
+        // account was made outside the app, like the bootstrapped admin), so
+        // "a wallet is created automatically" was wrong exactly here - and the
+        // page offered no way forward. The Wallets page has the create action.
+        <EmptyState
+          title="No wallet yet"
+          description="Set one up to start sending and receiving money."
+          action={
+            <Button asChild className="mt-2">
+              <Link href="/wallets">Set up your wallet</Link>
+            </Button>
+          }
+        />
       ) : walletQuery.isError ? (
         <ErrorState title="Couldn't load your wallet" error={walletQuery.error} onRetry={() => walletQuery.refetch()} />
       ) : (

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CircleNotch, UploadSimple } from "@phosphor-icons/react/dist/ssr";
@@ -44,6 +45,11 @@ function fileToDataUrl(file: File): Promise<string> {
 
 export function KycUploader() {
   const uploadMutation = useUploadKycDocument();
+  // A file input can't be cleared through its value, so after a successful
+  // upload it is remounted. form.reset() alone emptied the form's value while
+  // the input still showed the old file, and submitting again then failed
+  // with "Choose a file".
+  const [fileInputKey, setFileInputKey] = useState(0);
 
   const form = useForm<KycUploadFormValues>({
     resolver: zodResolver(kycUploadSchema),
@@ -60,13 +66,14 @@ export function KycUploader() {
       await uploadMutation.mutateAsync({
         documentType: values.documentType,
         documentNumber: values.documentNumber || undefined,
-        documentCountry: values.documentCountry || undefined,
+        documentCountry: values.documentCountry ? values.documentCountry.toUpperCase() : undefined,
         fileUrl,
         fileSizeBytes: values.file.size,
         mimeType: values.file.type,
       });
       toast.success("Document submitted for review");
       form.reset();
+      setFileInputKey((key) => key + 1);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed");
     }
@@ -143,6 +150,7 @@ export function KycUploader() {
                     is intentionally not forwarded; we hand back the File on
                     change and wire the remaining field props explicitly. */}
                 <Input
+                  key={fileInputKey}
                   type="file"
                   accept="image/jpeg,image/png,image/webp,application/pdf"
                   name={field.name}

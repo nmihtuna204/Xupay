@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { mockWorkerReady } from "@/mocks/worker-ready";
 
 /**
  * Boots the MSW worker in the browser so the showcase domains
@@ -8,32 +9,13 @@ import { useEffect, useState } from "react";
  * backend, so the worker runs in every environment — it only intercepts
  * `/mock-api/*`, leaving all real API calls untouched.
  *
- * Children render immediately; the worker starts in the background. The
- * showcase pages' first fetch may race the worker on a cold load, but
- * TanStack Query's retry re-runs it once the worker is ready.
- *
- * The start is shared at module level: MSW throws if start() runs on an
- * already-enabled worker, and the effect runs more than once (StrictMode in
- * dev, and every remount when navigating back into the app group).
+ * Children render immediately; the worker starts in the background, early.
+ * mockFetch waits for the same start before every request, so a showcase
+ * page's first fetch can no longer beat the worker to the network.
  */
-let workerStarted: Promise<unknown> | null = null;
-
-function startWorker() {
-  workerStarted ??= import("@/mocks/browser").then(({ worker }) =>
-    worker.start({ onUnhandledRequest: "bypass", quiet: true })
-  );
-  return workerStarted;
-}
-
 export function MockProvider({ children }: { children: React.ReactNode }) {
-  const [, setReady] = useState(false);
-
   useEffect(() => {
-    let active = true;
-    startWorker().then(() => active && setReady(true));
-    return () => {
-      active = false;
-    };
+    mockWorkerReady().catch((error) => console.error("Mock API worker failed to start", error));
   }, []);
 
   return <>{children}</>;

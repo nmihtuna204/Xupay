@@ -24,42 +24,48 @@ export function ContactList({ contacts }: { contacts: ContactResponse[] }) {
 
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      {contacts.map((contact) => (
-        <div key={contact.id} className="panel flex items-center justify-between p-5">
-          <div className="flex items-center gap-3">
-            <Avatar>
-              <AvatarFallback className="bg-secondary text-xs font-medium text-foreground">
-                {initialsFromName(contact.contactName)}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-medium">{contact.nickname || contact.contactName}</p>
-              <p className="text-xs text-muted-foreground">
-                {contact.totalTransactions} transaction{contact.totalTransactions === 1 ? "" : "s"}
-              </p>
+      {contacts.map((contact) => {
+        const name = contact.nickname || contact.contactName;
+        return (
+          <div key={contact.id} className="panel flex items-center justify-between p-5">
+            <div className="flex items-center gap-3">
+              <Avatar>
+                <AvatarFallback className="bg-secondary text-xs font-medium text-foreground">
+                  {initialsFromName(contact.contactName)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">{name}</p>
+                <p className="text-xs text-muted-foreground">
+                  {contact.totalTransactions} transaction{contact.totalTransactions === 1 ? "" : "s"}
+                </p>
+              </div>
+            </div>
+            {/* Icon-only buttons: the labels are all a screen reader can announce. */}
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon-sm" asChild>
+                <Link href={`/payments/transfer?to=${contact.contactUserId}`} aria-label={`Send money to ${name}`}>
+                  <PaperPlaneTilt weight="light" />
+                </Link>
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Remove ${name} from contacts`}
+                disabled={removeMutation.isPending}
+                onClick={() =>
+                  removeMutation.mutate(contact.id, {
+                    onSuccess: () => toast.success("Contact removed"),
+                    onError: (error) => toast.error(error.message),
+                  })
+                }
+              >
+                <Trash weight="light" />
+              </Button>
             </div>
           </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon-sm" asChild>
-              <Link href={`/payments/transfer?to=${contact.contactUserId}`}>
-                <PaperPlaneTilt weight="light" />
-              </Link>
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              onClick={() =>
-                removeMutation.mutate(contact.id, {
-                  onSuccess: () => toast.success("Contact removed"),
-                  onError: (error) => toast.error(error.message),
-                })
-              }
-            >
-              <Trash weight="light" />
-            </Button>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

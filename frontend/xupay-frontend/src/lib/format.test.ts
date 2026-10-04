@@ -5,6 +5,7 @@ import {
   formatCompactNumber,
   formatPercent,
   formatDate,
+  formatDateShort,
   initialsFromName,
 } from "./format";
 
@@ -53,6 +54,30 @@ describe("formatDate", () => {
   it("returns a dash for missing or invalid input", () => {
     expect(formatDate(undefined)).toBe("-");
     expect(formatDate("not-a-date")).toBe("-");
+  });
+
+  it("shows a date-only value as that calendar day, even west of UTC", () => {
+    // new Date("2026-09-30") is UTC midnight: Sep 29 in Los Angeles.
+    const original = process.env.TZ;
+    process.env.TZ = "America/Los_Angeles";
+    try {
+      expect(formatDateShort("2026-09-30")).toBe("Sep 30, 2026");
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
+  });
+
+  it("still reads a full timestamp as the instant it names", () => {
+    const original = process.env.TZ;
+    process.env.TZ = "Asia/Ho_Chi_Minh";
+    try {
+      // 08:57 UTC is 15:57 in Vietnam
+      expect(formatDate("2026-10-01T08:57:01Z")).toBe("Oct 1, 2026, 3:57 PM");
+    } finally {
+      if (original === undefined) delete process.env.TZ;
+      else process.env.TZ = original;
+    }
   });
 });
 

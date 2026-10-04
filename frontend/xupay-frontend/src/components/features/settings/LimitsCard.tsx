@@ -18,12 +18,15 @@ export function LimitsCard({ limits }: { limits: UserLimitsResponse }) {
           value={formatCurrencyFromCents(limits.singleTransactionMaxCents)}
         />
         <DetailField
-          label="Monthly volume limit"
+          label="Monthly send limit"
           value={formatCurrencyFromCents(limits.monthlyVolumeLimitCents)}
         />
-        <DetailField label="Max transactions / day" value={limits.maxTransactionsPerDay} />
-        <DetailField label="Max transactions / hour" value={limits.maxTransactionsPerHour} />
+        <DetailField label="Payments out / day" value={limits.maxTransactionsPerDay} />
+        <DetailField label="Payments out / hour" value={limits.maxTransactionsPerHour} />
       </div>
+      <p className="mt-5 text-xs text-muted-foreground">
+        Transfers and withdrawals count towards these. Money you receive does not.
+      </p>
     </div>
   );
 }

@@ -8,7 +8,7 @@ export type DocumentType =
   | "UTILITY_BILL"
   | "SELFIE";
 
-export type DocumentVerificationStatus = "PENDING" | "APPROVED" | "REJECTED";
+export type DocumentVerificationStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 
 export interface KycDocumentResponse {
   id: string;
@@ -18,9 +18,9 @@ export interface KycDocumentResponse {
   documentCountry?: string;
   fileUrl: string;
   verificationStatus: DocumentVerificationStatus;
+  /** The reviewer's note; for a REJECTED document, the reason the user is shown. */
   verificationNotes?: string;
   createdAt: string;
-  updatedAt: string;
 }
 
 export interface UploadKycDocumentRequest {

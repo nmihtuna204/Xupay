@@ -9,11 +9,12 @@ import type { NextRequest } from "next/server";
  * node_modules/next/dist/docs/.../file-conventions/proxy.md). Proxy always
  * runs on the Node.js runtime now, no edge option.
  *
- * It only ever sees a non-sensitive `xupay_session` flag cookie (never the
- * JWT itself, which lives in localStorage and is attached by the axios
- * interceptors) — good enough to redirect logged-out visitors away from
- * protected routes without a flash of protected content. The real
- * authorization check still happens on every API call via the Bearer token.
+ * It only checks the non-sensitive `xupay_session` flag cookie (see
+ * lib/session.ts), not the JWT: that is the HttpOnly `xupay_token` cookie,
+ * issued by user-service for the API's host — good enough to redirect
+ * logged-out visitors away from protected routes without a flash of
+ * protected content. The real authorization check still happens on every
+ * API call, which the browser sends with the token cookie.
  */
 const PROTECTED_PREFIXES = [
   "/dashboard",

@@ -70,7 +70,7 @@ export function TierLimits() {
                 <span className="text-[2.75rem] font-light leading-none tracking-[-0.04em] text-foreground tabular-nums">
                   {count}
                 </span>
-                <span className="text-sm text-muted-foreground">transfers / {period}</span>
+                <span className="text-sm text-muted-foreground">payments out / {period}</span>
               </p>
               <ul className="mt-6 space-y-2.5 border-t border-hairline pt-5 text-sm">
                 <Feature on>Send up to {formatCurrencyFromCents(t.dailySendCents)} a day</Feature>

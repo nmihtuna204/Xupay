@@ -19,9 +19,26 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { DOCUMENT_LABEL } from "./DocumentList";
 import { useApproveKycDocument, useRejectKycDocument } from "@/hooks/mutations/use-kyc-mutations";
+import { documentBlobUrl } from "@/lib/document-url";
 import { formatDate } from "@/lib/format";
 import type { KycTier } from "@/lib/api/user-service/auth";
 import type { KycDocumentResponse } from "@/lib/api/user-service/kyc";
+
+/**
+ * Uploads are stored as data URLs, which a link cannot open (browsers block
+ * navigating a tab to data:), so "Open file" did nothing for every document
+ * submitted from the app. The file opens as a blob: URL instead.
+ */
+function openDataUrl(dataUrl: string) {
+  const url = documentBlobUrl(dataUrl);
+  if (!url) {
+    toast.error("This file can't be opened: it isn't a JPG, PNG, WEBP or PDF.");
+    return;
+  }
+  window.open(url, "_blank");
+  // Long enough for the tab to load it; then release the memory.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 const TIER_OPTIONS: { value: KycTier; label: string }[] = [
   { value: "TIER_1", label: "Basic (Tier 1)" },
@@ -97,14 +114,24 @@ export function KycReviewQueue({ documents }: { documents: KycDocumentResponse[]
                   <p className="text-xs text-muted-foreground">
                     {[doc.documentNumber, doc.documentCountry].filter(Boolean).join(" · ") || "No number"}
                   </p>
-                  <a
-                    href={doc.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-1 inline-flex items-center gap-1 text-xs text-primary-accent hover:underline"
-                  >
-                    Open file <ArrowSquareOut weight="light" className="size-3" />
-                  </a>
+                  {doc.fileUrl.startsWith("data:") ? (
+                    <button
+                      type="button"
+                      onClick={() => openDataUrl(doc.fileUrl)}
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-primary-accent hover:underline"
+                    >
+                      Open file <ArrowSquareOut weight="light" className="size-3" />
+                    </button>
+                  ) : (
+                    <a
+                      href={doc.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-1 inline-flex items-center gap-1 text-xs text-primary-accent hover:underline"
+                    >
+                      Open file <ArrowSquareOut weight="light" className="size-3" />
+                    </a>
+                  )}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-muted-foreground">{doc.userId.slice(0, 8)}…</TableCell>
                 <TableCell className="text-muted-foreground">{formatDate(doc.createdAt)}</TableCell>
