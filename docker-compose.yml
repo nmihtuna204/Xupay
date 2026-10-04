@@ -12,6 +12,14 @@
 #
 # Secrets: override defaults by creating a .env file
 # (see .env.example). Defaults are for local development only.
+#
+# Every published port is bound to 127.0.0.1: the default passwords and JWT
+# secret are public in this repository, so a port reachable from the network
+# (Docker Desktop's firewall rule allows it even on Public Wi-Fi) would let
+# anyone nearby log into the databases or sign their own tokens. The app is
+# used from this machine (the frontend calls the APIs at localhost). To expose
+# a port on purpose, drop the "127.0.0.1:" - after replacing every default
+# secret in .env.
 # ========================================================
 
 networks:
@@ -38,7 +46,7 @@ services:
       POSTGRES_PASSWORD: ${USER_DB_PASSWORD:-UserS3rv1c3P@ss2025!}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - postgres-user-data:/var/lib/postgresql/data
       - ./infrastructure/db/user-service:/docker-entrypoint-initdb.d:ro
@@ -63,7 +71,7 @@ services:
       POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:-P@ym3ntS3rv1c3P@ss2025!}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "5433:5432"  # External 5433 to avoid conflict with postgres-user
+      - "127.0.0.1:5433:5432"  # External 5433 to avoid conflict with postgres-user
     volumes:
       - postgres-payment-data:/var/lib/postgresql/data
       - ./infrastructure/db/payment-service:/docker-entrypoint-initdb.d:ro
@@ -76,7 +84,7 @@ services:
       retries: 5
 
   # ------------------------------------------------------
-  # REDIS (Idempotency Cache)
+  # REDIS (idempotency cache, signed-out tokens, failed sign-in counters)
   # ------------------------------------------------------
   redis:
     image: redis:7-alpine
@@ -86,7 +94,7 @@ services:
       # Exposed to the container so the healthcheck can authenticate
       REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d1sP@ss2025!}
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -136,22 +144,38 @@ services:
       JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!}
       JWT_EXPIRATION: 86400000  # 24 hours
 
+      # The sign-in cookie (HttpOnly, SameSite=Strict) carries the token for
+      # the web app. Set AUTH_COOKIE_SECURE=true when serving over HTTPS.
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
+
+      # Redis: signed-out tokens (read by payment-service too) and failed
+      # sign-in counters. Best effort: if Redis is down, requests go through.
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-R3d1sP@ss2025!}
+      SPRING_DATA_REDIS_TIMEOUT: 2000
+
       # KYC reviewer, created (or promoted) at startup - see AdminBootstrap.
       # Local-dev default only; set ADMIN_EMAIL / ADMIN_PASSWORD in .env.
       XUPAY_ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@xupay.local}
       XUPAY_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-Admin@12345}
 
-      # gRPC Server
+      # gRPC Server. Only payment-service may call it: it must present this
+      # shared token (see ServiceTokenGrpcInterceptor).
       GRPC_SERVER_PORT: 9091
+      GRPC_SERVICE_TOKEN: ${GRPC_SERVICE_TOKEN:-LocalDevGrpcServiceTokenChangeThisInDotEnv2025!}
 
       # Logging
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_XUPAY: INFO
+    # gRPC (9091) is deliberately not published: only payment-service, on
+    # this network, calls it. Add "9091:9091" here only to debug from the host.
     ports:
-      - "8081:8081"
-      - "9091:9091"  # gRPC
+      - "127.0.0.1:8081:8081"
     depends_on:
       postgres-user:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - xupay-network
@@ -197,15 +221,16 @@ services:
       # verifies every request's token with it.
       JWT_SECRET: ${JWT_SECRET:-YourSuperSecretJWTKeyForProductionUseAtLeast256BitsChangeThis2025!}
 
-      # gRPC Client -> User Service
+      # gRPC Client -> User Service, authenticated with the shared service token
       GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service:9091
       GRPC_CLIENT_USER_SERVICE_NEGOTIATION_TYPE: plaintext
+      GRPC_SERVICE_TOKEN: ${GRPC_SERVICE_TOKEN:-LocalDevGrpcServiceTokenChangeThisInDotEnv2025!}
 
       # Logging
       LOGGING_LEVEL_ROOT: INFO
       LOGGING_LEVEL_COM_XUPAY: INFO
     ports:
-      - "8082:8082"
+      - "127.0.0.1:8082:8082"
     depends_on:
       postgres-payment:
         condition: service_healthy
@@ -236,7 +261,7 @@ services:
     container_name: xupay-frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       user-service:
         condition: service_healthy

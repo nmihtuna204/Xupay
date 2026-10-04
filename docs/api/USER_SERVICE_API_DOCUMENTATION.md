@@ -20,12 +20,20 @@ A concise reference for the User Service API.
 - Local: `http://localhost:8081`
 - Docker: `http://user-service:8081`
 
-Authentication is via JWT Bearer tokens.
+Requests authenticate with a JWT, sent either way:
 
-Header example:
-```http
-Authorization: Bearer <your-jwt-token>
-```
+- **Header** (scripts, Postman, other API clients): `Authorization: Bearer <token>`,
+  with the `token` from the register/login response.
+- **Cookie** (the web app): register and login also set `xupay_token`, an
+  `HttpOnly; SameSite=Strict; Path=/` cookie that page scripts cannot read. The
+  browser sends it to both services (same host). On a state-changing request
+  (POST/PUT/PATCH/DELETE) the cookie only counts together with an
+  `X-Requested-With` header, which the web app always sends; this keeps pages
+  on other origins from using it. If a request has both, the header wins.
+
+Every token has its own ID (`jti`). Logging out revokes that one token in both
+services until it would have expired; tokens without an ID are refused.
+Set `AUTH_COOKIE_SECURE=true` wherever the app is served over HTTPS.
 
 ---
 
@@ -46,24 +54,18 @@ Request:
 }
 ```
 
-Response (201):
+Response (201): the token in the body, and the same token as the
+`xupay_token` cookie (`Set-Cookie: xupay_token=...; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`).
 ```json
 {
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "expiresAt": "2025-12-28T10:00:00Z",
-  "user": {
-    "id": "11111111-1111-1111-1111-111111111111",
-    "email": "user@example.com",
-    "firstName": "John",
-    "lastName": "Doe",
-    "phone": "+84901234567",
-    "kycStatus": "PENDING",
-    "kycTier": "TIER_0",
-    "isActive": true,
-    "createdAt": "2025-12-21T10:00:00Z"
-  }
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer",
+  "expiresIn": 86400,
+  "userId": "11111111-1111-1111-1111-111111111111",
+  "email": "user@example.com"
 }
 ```
+Call `GET /api/auth/me` for the full profile.
 
 ### Login
 - POST `/api/auth/login`
@@ -77,12 +79,23 @@ Request:
 }
 ```
 
-Response (200): same token structure as Register.
+Response (200): same token structure and cookie as Register.
+
+Failed sign-ins are limited (Redis-backed, per 15 minutes; accounts are never locked):
+- 5 failures for one email from one IP block that email from that IP for 15 minutes;
+- 20 failures from one IP, whatever the emails, block that IP for 15 minutes.
+
+While blocked, login answers `429 Too Many Requests` with a `Retry-After`
+header (seconds) and a message such as
+`"Too many failed sign-in attempts. Try again in 15 minutes."`, even for the
+right password. A successful login clears that email's count for the IP.
 
 ### Logout
 - POST `/api/auth/logout`
-- Auth: Required
-- Response: 204 No Content
+- Auth: Public (works with an expired token too)
+- Revokes the token the request carries (cookie or Bearer header) in both
+  services until it expires. Only this session ends; other devices stay signed in.
+- Response: 204 No Content, with `Set-Cookie: xupay_token=; Max-Age=0` to delete the cookie
 
 ### Validate Token
 - GET `/api/auth/validate`
@@ -269,11 +282,19 @@ Request:
   "documentType": "PASSPORT",
   "documentNumber": "P1234567",
   "documentCountry": "USA",
-  "fileUrl": "https://s3.amazonaws.com/bucket/passport.jpg"
+  "fileUrl": "https://s3.amazonaws.com/bucket/passport.jpg",
+  "mimeType": "image/jpeg",
+  "fileSizeBytes": 1024000
 }
 ```
 
 Document types: PASSPORT, DRIVERS_LICENSE, NATIONAL_ID, UTILITY_BILL, SELFIE
+
+- `fileUrl` (required): an `https://` link, or the file itself as a base64 data URL
+  (`data:<type>;base64,...`, which is what the web app sends; there is no object storage).
+- `mimeType` (required): `image/jpeg`, `image/png`, `image/webp` or `application/pdf`.
+- `fileSizeBytes` (required): at most 5 MB (5,242,880).
+- `documentCountry` (optional): exactly 3 letters (ISO 3166-1 alpha-3).
 
 Response (201):
 ```json

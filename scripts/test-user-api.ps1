@@ -1,4 +1,4 @@
-# XuPay User Service - Complete API Test Script
+﻿# XuPay User Service - Complete API Test Script
 # Run this script to test all API endpoints
 
 $baseUrl = "http://localhost:8081"
@@ -28,7 +28,7 @@ $registerBody = @{
     password = $password
     firstName = "Test"
     lastName = "User"
-    phone = "+1234567890"
+    phone = "+1555$(Get-Random -Minimum 1000000 -Maximum 9999999)"  # unique column: a fixed number failed every run after the first
     dateOfBirth = "1990-01-01"
 } | ConvertTo-Json
 

@@ -112,19 +112,6 @@
           "response": []
         },
         {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/api/auth/logout",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "auth", "logout"]
-            }
-          },
-          "response": []
-        },
-        {
           "name": "Validate Token",
           "request": {
             "method": "GET",
@@ -314,7 +301,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"documentType\": \"PASSPORT\",\n  \"documentNumber\": \"P1234567\",\n  \"documentCountry\": \"USA\",\n  \"fileUrl\": \"https://s3.amazonaws.com/bucket/passport.jpg\"\n}",
+              "raw": "{\n  \"documentType\": \"PASSPORT\",\n  \"documentNumber\": \"P1234567\",\n  \"documentCountry\": \"USA\",\n  \"fileUrl\": \"https://s3.amazonaws.com/bucket/passport.jpg\",\n  \"mimeType\": \"image/jpeg\",\n  \"fileSizeBytes\": 1024000\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -357,6 +344,25 @@
                   "value": "ENTER_DOCUMENT_UUID_HERE"
                 }
               ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Sign out (run last)",
+      "description": "Logout revokes {{jwt_token}} in both services until it expires, so every request after it answers 401. Run Login again to get a new token.",
+      "item": [
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
             }
           },
           "response": []

@@ -36,18 +36,23 @@ flowchart LR
     subgraph Data
         UDB[("PostgreSQL<br/>user_db")]
         PDB[("PostgreSQL<br/>payment_db")]
-        RD[("Redis<br/>idempotency cache")]
+        RD[("Redis<br/>idempotency cache,<br/>signed-out tokens,<br/>sign-in limits")]
     end
 
-    FE -- "REST + JWT" --> US
-    FE -- "REST + JWT" --> PS
+    FE -- "REST + JWT cookie" --> US
+    FE -- "REST + JWT cookie" --> PS
     PS -- "gRPC: validate KYC/limits,<br/>record usage" --> US
     US --> UDB
     PS --> PDB
+    US --> RD
     PS --> RD
 ```
 
 **Why two databases?** Each service owns its data (database-per-service). The Payment Service never reads `user_db` — it asks the User Service over gRPC ("can this user send 50,000₫ right now?"), keeping service boundaries honest.
+
+**Who may call the gRPC API?** Only the Payment Service: every call carries a shared service token (`GRPC_SERVICE_TOKEN`), and the gRPC port is not published outside the Docker network. End-user JWTs authenticate the REST APIs, never the internal one.
+
+**How are users signed in?** Login sets the JWT as an `HttpOnly; SameSite=Strict` cookie, so page scripts (an injected one included) never see it; scripts and API clients can still send `Authorization: Bearer` with the token from the response body. Logging out revokes that one token in both services (its ID goes into Redis until it would have expired). Failed sign-ins are limited per email+IP (5) and per IP (20) over 15 minutes, answering `429` with `Retry-After`; accounts are never locked. Redis-backed checks fail open and log if Redis is down, so an outage does not take sign-in or payments down.
 
 ### The money model (double-entry ledger)
 
@@ -87,7 +92,7 @@ POST /api/payments/transfer
 | Inter-service | gRPC + Protocol Buffers (grpc-spring-boot-starter) |
 | Data | PostgreSQL 15 (×2), Redis 7 |
 | Frontend | Next.js 16, React 19, TypeScript 5, TanStack Query, Zustand, Tailwind CSS 4, Radix UI, Recharts |
-| Testing | JUnit 5 + Mockito (70 backend tests), Vitest + Testing Library + MSW (457 frontend tests) |
+| Testing | JUnit 5 + Mockito (193 backend tests), Vitest + Testing Library + MSW (73 frontend tests) |
 | Infra | Docker Compose, GitHub Actions CI, multi-stage Dockerfiles |
 
 ---
@@ -122,7 +127,7 @@ cd frontend/xupay-frontend
 npm ci && npm run dev      # http://localhost:3000
 ```
 
-> Frontend without any backend: `NEXT_PUBLIC_USE_MOCKS=true npm run dev` (in-memory mock clients).
+> The Fraud, Compliance, Analytics and Audit pages are served by in-browser mocks (MSW) and need no backend; every other page talks to the two services above.
 
 ### Demo flow (2 minutes)
 
@@ -138,12 +143,12 @@ npm ci && npm run dev      # http://localhost:3000
 
 ```bash
 # Backend (per service)
-cd backend/user-service    && ./mvnw test     # 32 tests
-cd backend/payment-service && ./mvnw test     # 38 tests
+cd backend/user-service    && ./mvnw test     # 102 tests
+cd backend/payment-service && ./mvnw test     # 91 tests
 
 # Frontend
 cd frontend/xupay-frontend
-npm test                                       # 459 tests (Vitest)
+npx vitest run                                 # 73 tests (Vitest)
 npm run build                                  # production build
 
 # End-to-end smoke test against the running Docker stack
@@ -178,9 +183,9 @@ XuPay/
 │   └── src/
 │       ├── app/               # Pages: dashboard, wallets, transactions, kyc, fraud...
 │       ├── components/        # UI components (+ colocated tests)
-│       ├── hooks/api/         # TanStack Query hooks per domain
-│       ├── lib/               # Typed API clients (real + mock) & adapters
-│       └── providers/         # Auth, React Query, Theme providers
+│       ├── hooks/             # TanStack Query hooks per domain (queries/, mutations/)
+│       ├── lib/               # Typed API clients, error mapping, formatting
+│       └── providers/         # React Query, theme and mock-worker providers
 ├── infrastructure/db/         # Full SQL schemas (triggers, functions, seeds)
 ├── docs/                      # Spec, API reference, Postman collections, diagrams
 ├── scripts/                   # Dev & API smoke-test scripts (PowerShell)

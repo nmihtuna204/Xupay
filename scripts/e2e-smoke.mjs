@@ -119,8 +119,8 @@ async function main() {
   await createWallet(alice, 'alice');
   await createWallet(bob, 'bob');
 
-  // Amounts stay within TIER_0 limits: single txn ≤ 5,000 cents,
-  // daily send ≤ 10,000 cents (unverified starter tier).
+  // Amounts and counts stay within TIER_0 limits (unverified starter tier):
+  // 1,250,000 VND per payment, 2 outgoing payments per hour, 5 per day.
 
   // 4. Deposit 8,000 cents to alice (top-up is not tier-limited)
   console.log('\n— deposit');

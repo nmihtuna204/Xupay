@@ -347,7 +347,7 @@ graph LR
   1. User enters email and password
   2. System validates credentials against database
   3. System generates JWT token (valid for 1 hour)
-  4. Token stored in localStorage
+  4. Token set as an HttpOnly, SameSite=Strict cookie (page scripts cannot read it)
   5. User redirected to dashboard
 - **Postcondition**: User authenticated, token stored, can access protected resources
 
@@ -677,7 +677,7 @@ sequenceDiagram
   DB-->>API: User record
   API->>API: Issue JWT (accessToken)
   API-->>FE: 200 { accessToken }
-  FE->>User: Store token (localStorage)
+  FE->>User: Token kept in HttpOnly cookie (Set-Cookie)
 ```
 
 ### Auth — Register
@@ -1127,7 +1127,7 @@ Notes:
 - Email and password validation
 - Password verification against hashed value
 - JWT token generation
-- Token stored in client localStorage
+- Token stored in an HttpOnly, SameSite=Strict cookie set by the server
 - Automatic token refresh mechanism (optional)
 
 **📍 INSERT HERE: Login flow diagram showing:**
@@ -1145,7 +1145,7 @@ sequenceDiagram
     DB-->>API: User Record
     API->>API: Generate JWT
     API-->>FE: { accessToken }
-    FE->>User: Store token (localStorage) and redirect
+    FE->>User: Token kept in HttpOnly cookie, redirect
 ```
 
 - Client sends credentials

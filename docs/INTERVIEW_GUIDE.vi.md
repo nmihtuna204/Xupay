@@ -257,11 +257,12 @@ Ngược với nạp: check số dư trước → CREDIT ví user / DEBIT GL 211
 
 **Nhóm bảo mật**
 7. *"Lưu mật khẩu thế nào?"* → BCrypt + salt, strength 12; login so hash chứ không giải mã.
-8. *"JWT lưu ở đâu phía client, rủi ro gì?"* → localStorage — dễ làm nhưng dính XSS thì lộ token; production nên cân nhắc httpOnly cookie + CSRF protection. Nói được cả 2 mặt là ăn điểm.
+8. *"JWT lưu ở đâu phía client, rủi ro gì?"* → Cookie **HttpOnly + SameSite=Strict** do server đặt: JavaScript (kể cả mã XSS) không đọc được nên không lấy cắp được token. Đổi lại, cookie tự đi kèm request nên phải chống CSRF: SameSite=Strict chặn site khác; trên request thay đổi dữ liệu, cookie chỉ được tính khi có header `X-Requested-With` (origin lạ không thêm được vì bị CORS preflight từ chối); CORS chỉ cho đúng origin của web app. Trước đây token nằm ở localStorage — dính XSS là lộ token. Nói được cả lý do đổi lẫn cái giá phải trả (CSRF) là ăn điểm.
+9. *"Đăng xuất thì token còn hiệu lực không? Chống dò mật khẩu thế nào?"* → Mỗi token có `jti`; đăng xuất ghi jti vào Redis đến khi token hết hạn, cả hai service từ chối nó — chỉ phiên đó bị đăng xuất. Đăng nhập sai: 5 lần/15 phút cho cùng email+IP, 20 lần/15 phút cho một IP → 429 kèm `Retry-After`, **không khóa tài khoản** (để kẻ xấu không khóa được người khác). Redis sập thì cho qua và ghi log — đánh đổi có chủ đích giữa an toàn và tính sẵn sàng.
 
 **Nhóm quy trình**
-9. *"Em test dự án thế nào?"* → 3 tầng: unit (Mockito/Vitest), controller test (MockMvc), và smoke test e2e qua Docker; CI GitHub Actions chạy toàn bộ mỗi lần push.
-10. *"Phần nào khó nhất?"* → Gợi ý kể: hiểu và cài đúng double-entry (đọc chuẩn kế toán), làm idempotency 2 tầng, hoặc debug tích hợp gRPC giữa 2 service.
+10. *"Em test dự án thế nào?"* → 3 tầng: unit (Mockito/Vitest), controller test (MockMvc), và smoke test e2e qua Docker; CI GitHub Actions chạy toàn bộ mỗi lần push.
+11. *"Phần nào khó nhất?"* → Gợi ý kể: hiểu và cài đúng double-entry (đọc chuẩn kế toán), làm idempotency 2 tầng, hoặc debug tích hợp gRPC giữa 2 service.
 
 ---
 

@@ -1,4 +1,4 @@
-# ========================================================
+﻿# ========================================================
 # Payment Service - End-to-End API Test Script
 # ========================================================
 # Purpose: Automated testing of Payment Service APIs
@@ -41,6 +41,12 @@ function Test-Endpoint {
     }
 }
 
+# The payment API authenticates every /api call with the token user-service
+# issues at registration; without it each request is a 401.
+function Get-AuthHeader([string]$Token) {
+    return @{ Authorization = "Bearer $Token" }
+}
+
 # ========================================================
 # STEP 1: Verify Services Running
 # ========================================================
@@ -69,12 +75,14 @@ $aliceEmail = "alice.test.$(Get-Random)@xupay.com"
 $bobEmail = "bob.test.$(Get-Random)@xupay.com"
 $aliceId = $null
 $bobId = $null
+$aliceToken = $null
+$bobToken = $null
 
 Test-Endpoint "Register Alice" {
     $body = @{
         email = $aliceEmail
         password = "Alice123!@#"
-        phoneNumber = "+84901$(Get-Random -Minimum 100000 -Maximum 999999)"
+        phone = "+84901$(Get-Random -Minimum 100000 -Maximum 999999)"
         firstName = "Alice Test"
         lastName = "Test"
         dateOfBirth = "1990-05-15"
@@ -87,6 +95,7 @@ Test-Endpoint "Register Alice" {
         -Body $body
 
     $script:aliceId = $response.userId
+    $script:aliceToken = $response.token
     Write-Host "    Alice ID: $script:aliceId" -ForegroundColor Gray
     
     if (-not $script:aliceId) {
@@ -98,7 +107,7 @@ Test-Endpoint "Register Bob" {
     $body = @{
         email = $bobEmail
         password = "Bob123!@#"
-        phoneNumber = "+84902$(Get-Random -Minimum 100000 -Maximum 999999)"
+        phone = "+84902$(Get-Random -Minimum 100000 -Maximum 999999)"
         firstName = "Bob Test"
         lastName = "Test"
         dateOfBirth = "1992-08-20"
@@ -111,6 +120,7 @@ Test-Endpoint "Register Bob" {
         -Body $body
 
     $script:bobId = $response.userId
+    $script:bobToken = $response.token
     Write-Host "    Bob ID: $script:bobId" -ForegroundColor Gray
     
     if (-not $script:bobId) {
@@ -136,6 +146,7 @@ Test-Endpoint "Create Alice's Wallet" {
         -Uri "$paymentServiceUrl/api/wallets" `
         -Method POST `
         -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:aliceToken) `
         -Body $body
 
     $script:aliceWalletId = $response.walletId
@@ -156,6 +167,7 @@ Test-Endpoint "Create Bob's Wallet" {
         -Uri "$paymentServiceUrl/api/wallets" `
         -Method POST `
         -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:bobToken) `
         -Body $body
 
     $script:bobWalletId = $response.walletId
@@ -172,7 +184,7 @@ Test-Endpoint "Create Bob's Wallet" {
 Write-Host "`n📊 Step 4: Checking initial balances..." -ForegroundColor Cyan
 
 Test-Endpoint "Alice Initial Balance (should be 0)" {
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance" -Headers (Get-AuthHeader $script:aliceToken)
     Write-Host "    Balance: $($response.balanceAmount) VND" -ForegroundColor Gray
     
     if ($response.balanceCents -ne 0) {
@@ -181,7 +193,7 @@ Test-Endpoint "Alice Initial Balance (should be 0)" {
 }
 
 Test-Endpoint "Bob Initial Balance (should be 0)" {
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:bobWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:bobWalletId/balance" -Headers (Get-AuthHeader $script:bobToken)
     Write-Host "    Balance: $($response.balanceAmount) VND" -ForegroundColor Gray
     
     if ($response.balanceCents -ne 0) {
@@ -194,36 +206,35 @@ Test-Endpoint "Bob Initial Balance (should be 0)" {
 # ========================================================
 Write-Host "`n💳 Step 5: Topping up Alice's wallet..." -ForegroundColor Cyan
 
-Test-Endpoint "Simulate Topup via Direct DB Insert" {
-    $topupAmount = 100000000  # 1M VND
-    
-    # Execute Docker command to insert topup transaction
-    $sqlCommand = @"
-BEGIN;
-INSERT INTO transactions (id, idempotency_key, to_wallet_id, to_user_id, amount_cents, type, status, description, completed_at, created_at)
-VALUES (gen_random_uuid(), gen_random_uuid(), '$script:aliceWalletId', '$script:aliceId', $topupAmount, 'TOPUP', 'COMPLETED', 'Test topup for API testing', NOW(), NOW());
+# Through the deposit API: the ledger rows this used to INSERT by hand (one
+# CREDIT on the wallet, under GL 2110) were unbalanced, so the deferred
+# balance trigger rejected them at COMMIT - and a credit would have lowered
+# the wallet's balance, not raised it.
+Test-Endpoint "Deposit 1,000,000 VND to Alice" {
+    $body = @{
+        idempotencyKey = (New-Guid).ToString()
+        userId = $script:aliceId
+        amountCents = 100000000  # 1,000,000 VND
+        description = "Test top-up from script"
+    } | ConvertTo-Json
 
-INSERT INTO ledger_entries (id, transaction_id, wallet_id, gl_account_code, entry_type, amount_cents, description, created_at)
-SELECT gen_random_uuid(), t.id, t.to_wallet_id, '2110', 'CREDIT', t.amount_cents, 'Topup via test script', NOW()
-FROM transactions t
-WHERE t.description = 'Test topup for API testing' AND t.to_wallet_id = '$script:aliceWalletId'
-ORDER BY t.created_at DESC LIMIT 1;
-COMMIT;
-"@
+    $response = Invoke-RestMethod `
+        -Uri "$paymentServiceUrl/api/payments/deposit" `
+        -Method POST `
+        -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:aliceToken) `
+        -Body $body
 
-    $result = docker exec xupay-postgres-payment psql -U payment_service_user -d payment_db -c $sqlCommand 2>&1
-    
-    if ($LASTEXITCODE -ne 0) {
-        throw "Failed to insert topup: $result"
+    if ($response.status -ne "COMPLETED") {
+        throw "Expected COMPLETED status, got $($response.status)"
     }
-    
-    Write-Host "    Topup successful: 1,000,000 VND" -ForegroundColor Gray
+    Write-Host "    Deposit successful: 1,000,000 VND" -ForegroundColor Gray
 }
 
 Test-Endpoint "Verify Alice Balance After Topup" {
     Start-Sleep -Seconds 1  # Wait for consistency
     
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance" -Headers (Get-AuthHeader $script:aliceToken)
     Write-Host "    New Balance: $($response.balanceAmount) VND" -ForegroundColor Gray
     
     if ($response.balanceCents -ne 100000000) {
@@ -254,6 +265,7 @@ Test-Endpoint "Execute P2P Transfer (Alice → Bob: 250k VND)" {
         -Uri "$paymentServiceUrl/api/payments/transfer" `
         -Method POST `
         -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:aliceToken) `
         -Body $body
 
     $script:transferTxnId = $response.transactionId
@@ -271,7 +283,7 @@ Test-Endpoint "Execute P2P Transfer (Alice → Bob: 250k VND)" {
 }
 
 Test-Endpoint "Verify Alice Balance Decreased" {
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance" -Headers (Get-AuthHeader $script:aliceToken)
     Write-Host "    Alice Balance: $($response.balanceAmount) VND" -ForegroundColor Gray
     
     $expectedBalance = 100000000 - $transferAmount
@@ -281,7 +293,7 @@ Test-Endpoint "Verify Alice Balance Decreased" {
 }
 
 Test-Endpoint "Verify Bob Balance Increased" {
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:bobWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:bobWalletId/balance" -Headers (Get-AuthHeader $script:bobToken)
     Write-Host "    Bob Balance: $($response.balanceAmount) VND" -ForegroundColor Gray
     
     if ($response.balanceCents -ne $transferAmount) {
@@ -311,6 +323,7 @@ Test-Endpoint "Retry Transfer with Same Idempotency Key" {
         -Uri "$paymentServiceUrl/api/payments/transfer" `
         -Method POST `
         -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:aliceToken) `
         -Body $body
 
     $script:secondTxnId = $response.transactionId
@@ -325,7 +338,7 @@ Test-Endpoint "Retry Transfer with Same Idempotency Key" {
 }
 
 Test-Endpoint "Verify No Duplicate Charge" {
-    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance"
+    $response = Invoke-RestMethod -Uri "$paymentServiceUrl/api/wallets/$script:aliceWalletId/balance" -Headers (Get-AuthHeader $script:aliceToken)
     
     $expectedBalance = 100000000 - $transferAmount
     if ($response.balanceCents -ne $expectedBalance) {
@@ -354,6 +367,7 @@ Test-Endpoint "Large Amount Transfer (should be flagged)" {
         -Uri "$paymentServiceUrl/api/payments/transfer" `
         -Method POST `
         -ContentType "application/json" `
+        -Headers (Get-AuthHeader $script:aliceToken) `
         -Body $body
 
     Write-Host "    Fraud Score: $($response.fraudScore)" -ForegroundColor Gray

@@ -331,9 +331,17 @@ BEGIN
     INTO v_is_active, v_is_suspended, v_kyc_status
     FROM users
     WHERE id = p_user_id;
-    
-    -- Check basic conditions
-    IF NOT v_is_active OR v_is_suspended OR v_kyc_status != 'approved' THEN
+
+    -- An unknown user left every variable NULL, every check below NULL,
+    -- and the function returned true.
+    IF NOT FOUND THEN
+        RETURN false;
+    END IF;
+
+    -- Same rule as User#canTransact: KYC tier caps the limits, a REJECTED
+    -- KYC blocks. Statuses are uppercase (chk_kyc_status); the lowercase
+    -- 'approved' compared here before rejected every user.
+    IF NOT v_is_active OR v_is_suspended OR v_kyc_status = 'REJECTED' THEN
         RETURN false;
     END IF;
     

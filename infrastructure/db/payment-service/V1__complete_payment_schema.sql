@@ -466,20 +466,25 @@ INSERT INTO chart_of_accounts (account_code, account_name, account_type, normal_
 -- =====================================================
 -- SEED DATA: Test Wallets
 -- =====================================================
+-- Values must satisfy chk_wallet_type (uppercase): the lowercase 'personal'
+-- these rows used to carry aborted the whole init script on a fresh volume.
+-- PERSONAL wallets sit on 1110 (asset, DEBIT-normal), the same account
+-- WalletServiceImpl assigns; on 2110 (a CREDIT-normal liability)
+-- get_wallet_balance() would count every deposit as a negative balance.
 INSERT INTO wallets (id, user_id, gl_account_code, wallet_type, currency, is_active) VALUES
-    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '2110', 'personal', 'VND', true),
-    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', '2110', 'personal', 'VND', true),
-    ('cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', '2110', 'personal', 'VND', true);
+    ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '11111111-1111-1111-1111-111111111111', '1110', 'PERSONAL', 'VND', true),
+    ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '22222222-2222-2222-2222-222222222222', '1110', 'PERSONAL', 'VND', true),
+    ('cccccccc-cccc-cccc-cccc-cccccccccccc', '33333333-3333-3333-3333-333333333333', '1110', 'PERSONAL', 'VND', true);
 
 -- =====================================================
 -- SEED DATA: Fraud Rules
 -- =====================================================
-INSERT INTO fraud_rules (rule_name, rule_type, parameters, risk_score_penalty, action, is_active) VALUES
-    ('High Amount Transaction', 'amount_threshold', '{"threshold_cents": 500000}', 40, 'flag', true),
-    ('Velocity Check', 'velocity', '{"max_transactions_per_hour": 10}', 30, 'flag', true),
-    ('Structuring Pattern', 'pattern_match', '{"pattern": "multiple_transactions_near_limit"}', 50, 'review', true),
-    ('Geographic Anomaly', 'geo_anomaly', '{"check_ip_country": true}', 20, 'flag', true),
-    ('Blacklist Check', 'blacklist', '{"check_user_blacklist": true}', 100, 'block', true);
+-- None here: the rule set is seeded by the Flyway migration
+-- backend/payment-service/src/main/resources/db/migration/V2__fraud_rules_data.sql.
+-- The rows this section used to insert never loaded (lowercase types and
+-- actions violate chk_rule_type / chk_action), and their parameter keys
+-- (threshold_cents, max_transactions_per_hour) are not the ones
+-- FraudDetectionServiceImpl reads.
 
 -- =====================================================
 -- COMMENTS

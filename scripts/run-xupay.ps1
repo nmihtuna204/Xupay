@@ -1,4 +1,4 @@
-# Run XuPay stack (infra + build + run services)
+﻿# Run XuPay stack (infra + build + run services)
 # Place this file at scripts/run-xupay.ps1 and run with PowerShell:  
 #   powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run-xupay.ps1
 

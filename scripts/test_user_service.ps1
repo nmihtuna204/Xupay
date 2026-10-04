@@ -5,7 +5,7 @@ $body = @{
   password = 'P@ssword123'
   firstName = 'Auto'
   lastName = 'User'
-  phone = '+84901234567'
+  phone = "+84901$(Get-Random -Minimum 100000 -Maximum 999999)"  # unique column: a fixed number broke every run after the first
 } | ConvertTo-Json
 
 Write-Output "Registering as $email"
