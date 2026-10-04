@@ -25,12 +25,16 @@ spring:
     baseline-on-migrate: true  # Allow Flyway to work with existing schema
     locations: classpath:db/migration  # V1__complete_payment_schema.sql, V2__fraud_rules_data.sql
   
+  # Redis: idempotency cache and the signed-out token check, both best effort
+  # (see RedisConfig). A short timeout keeps a stalled Redis from stalling
+  # every request; Docker passes the same 2000 ms.
   data:
     redis:
       host: ${SPRING_DATA_REDIS_HOST:localhost}
       port: ${SPRING_DATA_REDIS_PORT:6379}
       password: ${SPRING_DATA_REDIS_PASSWORD:R3d1sP@ss2025!}
-      timeout: ${SPRING_DATA_REDIS_TIMEOUT:60000}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2000}
+      connect-timeout: 2000
   
   jackson:
     serialization:
@@ -47,6 +51,13 @@ jwt:
   secret: ${JWT_SECRET:xupay-super-secret-key-minimum-256-bits-for-production-use-only}
   issuer: xupay-user-service
 
+# Shared secret this service presents on every gRPC call to user-service (see
+# ServiceTokenClientInterceptor). Must equal user-service's
+# xupay.grpc.service-token; Docker passes GRPC_SERVICE_TOKEN to both.
+xupay:
+  grpc:
+    service-token: ${GRPC_SERVICE_TOKEN:xupay-local-dev-grpc-service-token-change-me}
+
 # gRPC Client Configuration (for calling User Service)
 # Local default: user-service gRPC on 50053. Docker overrides via
 # GRPC_CLIENT_USER_SERVICE_ADDRESS (static://user-service:9091).
@@ -56,15 +67,18 @@ grpc:
       address: ${GRPC_CLIENT_USER_SERVICE_ADDRESS:static://localhost:50053}
       negotiationType: ${GRPC_CLIENT_USER_SERVICE_NEGOTIATION_TYPE:plaintext}
 
-# Actuator
+# Actuator: health only, without details. /actuator/** is outside the bearer
+# token check (the Docker healthcheck calls it), and with metrics exposed and
+# health details on, anyone could read request counts and URIs, JVM internals,
+# and which databases, cache and gRPC channel this service depends on.
 management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health
   endpoint:
     health:
-      show-details: always
+      show-details: never
 
 # Logging
 logging:

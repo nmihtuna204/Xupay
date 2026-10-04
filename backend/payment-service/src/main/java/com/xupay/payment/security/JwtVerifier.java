@@ -20,39 +20,53 @@ import java.util.UUID;
  * acting user from the request body, so anyone could deposit into, withdraw
  * from or read any wallet. Tokens are HS256 with a secret shared with
  * user-service (jwt.secret), so they are verified locally without a network
- * call per request.
+ * call per request. The one lookup is the signed-out check: a token revoked
+ * by logging out (user-service records its ID in the shared Redis) is
+ * refused here too.
  */
 @Component
 public class JwtVerifier {
 
     private final SecretKey key;
     private final String issuer;
+    private final RevokedTokens revokedTokens;
 
     public JwtVerifier(@Value("${jwt.secret}") String secret,
-                       @Value("${jwt.issuer:xupay-user-service}") String issuer) {
+                       @Value("${jwt.issuer:xupay-user-service}") String issuer,
+                       RevokedTokens revokedTokens) {
         if (secret == null || secret.length() < 32) {
             throw new IllegalStateException("jwt.secret must be at least 256 bits (32 characters)");
         }
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         this.issuer = issuer;
+        this.revokedTokens = revokedTokens;
     }
 
     /**
      * @return the authenticated user's ID
      * @throws UnauthorizedException if the token is missing, forged, expired,
-     *         from another issuer, or has no usable subject
+     *         from another issuer, has no usable subject or ID, or was signed out
      */
     public UUID verify(String token) {
+        Claims claims;
+        UUID userId;
         try {
-            Claims claims = Jwts.parser()
+            claims = Jwts.parser()
                     .verifyWith(key)
                     .requireIssuer(issuer)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();
-            return UUID.fromString(claims.getSubject());
+            userId = UUID.fromString(claims.getSubject());
         } catch (JwtException | IllegalArgumentException | NullPointerException e) {
             throw new UnauthorizedException("Invalid or expired token");
         }
+        // Tokens from before logout could revoke them carry no ID, so they
+        // could never be signed out: refuse them (signing in again issues one).
+        String tokenId = claims.getId();
+        if (tokenId == null || revokedTokens.isRevoked(tokenId)) {
+            throw new UnauthorizedException("Invalid or expired token");
+        }
+        return userId;
     }
 }

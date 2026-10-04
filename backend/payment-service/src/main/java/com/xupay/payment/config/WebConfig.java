@@ -26,10 +26,12 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
+        // The web app's origins only. With the sign-in cookie, any origin
+        // allowed here (with credentials) can call the API as the signed-in
+        // user and read the answers, so nothing else belongs on this list.
         registry.addMapping("/**")
                 .allowedOrigins(
                         "http://localhost:3000",  // Next.js dev/prod server
-                        "http://localhost:5173",  // Vite dev server
                         "https://xupay.com"       // Production domain
                 )
                 .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")

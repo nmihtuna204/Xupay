@@ -14,7 +14,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,7 +30,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgumentException(IllegalArgumentException ex) {
         log.error("Illegal argument: {}", ex.getMessage());
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Bad Request")
                 .message(ex.getMessage())
@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
         });
 
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .status(HttpStatus.BAD_REQUEST.value())
                 .error("Validation Failed")
                 .message("Invalid input parameters")
@@ -102,9 +102,15 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "Conflict", "This request conflicts with one already processed. Retry it.");
     }
 
+    /** The User Service did not answer (down or timed out): 503, retryable, nothing was charged. */
+    @ExceptionHandler(ServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleServiceUnavailable(ServiceUnavailableException ex) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "Service Unavailable", ex.getMessage());
+    }
+
     private ResponseEntity<ErrorResponse> error(HttpStatus status, String error, String message) {
         return ResponseEntity.status(status).body(ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .status(status.value())
                 .error(error)
                 .message(message)
@@ -113,9 +119,29 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
+        // Spring MVC's own exceptions - no such route, wrong HTTP method,
+        // unsupported media type - carry their real status. Answering them
+        // as a 500 "unexpected error" turned every mistyped URL into a
+        // server error with a logged stack trace.
+        if (ex instanceof org.springframework.web.ErrorResponse framework) {
+            HttpStatus status = HttpStatus.resolve(framework.getStatusCode().value());
+            if (status != null && status.is4xxClientError()) {
+                log.warn("Client error {}: {}", status.value(), ex.getMessage());
+                String detail = framework.getBody().getDetail();
+                return ResponseEntity.status(status)
+                        .headers(framework.getHeaders())
+                        .body(ErrorResponse.builder()
+                                .timestamp(Instant.now())
+                                .status(status.value())
+                                .error(status.getReasonPhrase())
+                                .message(detail != null ? detail : status.getReasonPhrase())
+                                .build());
+            }
+        }
+
         log.error("Unexpected error: ", ex);
         ErrorResponse error = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(Instant.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
                 .error("Internal Server Error")
                 .message("An unexpected error occurred")

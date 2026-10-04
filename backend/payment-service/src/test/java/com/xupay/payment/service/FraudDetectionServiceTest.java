@@ -346,4 +346,36 @@ class FraudDetectionServiceTest {
         assertThat(result.getTotalScore()).isEqualTo(50);
         assertThat(result.getTriggeredRules()).contains("Rapid 5/5min");
     }
+
+    @Test
+    @DisplayName("Should skip a rule with missing parameters instead of failing the transfer")
+    void evaluateTransaction_RuleMissingParameter_IsSkipped() {
+        // Given: the parameter key the old V1 seed used, not the one the engine reads
+        FraudRule misconfigured = TestDataBuilder.createAmountRule("Old seed rule", 0, 40, FraudAction.BLOCK);
+        misconfigured.setParameters("{\"threshold_cents\": 500000}");
+        FraudRule valid = TestDataBuilder.createAmountRule("High amount", 50_000L, 30, FraudAction.FLAG);
+        when(fraudRuleRepository.findByIsActiveTrueOrderByRiskScorePenaltyDesc())
+            .thenReturn(List.of(misconfigured, valid));
+
+        // When
+        FraudEvaluationResult result = fraudDetectionService.evaluateTransaction(testRequest, testUserId);
+
+        // Then: the broken rule is ignored, the valid one still applies
+        assertThat(result.getTriggeredRules()).containsExactly("High amount");
+        assertThat(result.isShouldBlock()).isFalse();
+        assertThat(result.getTotalScore()).isEqualTo(30);
+    }
+
+    @Test
+    @DisplayName("Should skip a round-amount rule with a zero divisor")
+    void evaluateTransaction_ZeroDivisor_IsSkipped() {
+        FraudRule zeroDivisor = TestDataBuilder.createPatternRule("Round 0", "ROUND_AMOUNT", 0L, 20, FraudAction.FLAG);
+        when(fraudRuleRepository.findByIsActiveTrueOrderByRiskScorePenaltyDesc())
+            .thenReturn(List.of(zeroDivisor));
+
+        FraudEvaluationResult result = fraudDetectionService.evaluateTransaction(testRequest, testUserId);
+
+        assertThat(result.getTriggeredRules()).isEmpty();
+        assertThat(result.getTotalScore()).isZero();
+    }
 }

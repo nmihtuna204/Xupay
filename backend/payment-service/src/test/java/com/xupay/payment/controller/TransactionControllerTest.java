@@ -7,6 +7,7 @@ import com.xupay.payment.dto.TransactionListResponse;
 import com.xupay.payment.dto.TransferRequest;
 import com.xupay.payment.dto.TransferResponse;
 import com.xupay.payment.entity.enums.TransactionStatus;
+import com.xupay.payment.exception.ServiceUnavailableException;
 import com.xupay.payment.security.JwtVerifier;
 import com.xupay.payment.security.UnauthorizedException;
 import com.xupay.payment.service.TransactionService;
@@ -22,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -33,6 +34,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -136,7 +138,7 @@ class TransactionControllerTest {
             .description("Test")
             .fromUserId(caller)
             .toUserId(UUID.randomUUID())
-            .createdAt(LocalDateTime.now())
+            .createdAt(Instant.now())
             .build();
 
         when(transactionService.getTransactionDetail(eq(txId))).thenReturn(detail);
@@ -276,5 +278,31 @@ class TransactionControllerTest {
     void getTransactionDetail_withBadId_isBadRequest() throws Exception {
         mockMvc.perform(authed(get("/api/payments/not-a-uuid")))
             .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("User Service unreachable - 503, not a 500")
+    void transfer_userServiceDown_isServiceUnavailable() throws Exception {
+        TransferRequest req = new TransferRequest(UUID.randomUUID(), caller, UUID.randomUUID(), 5000L, null, null, null);
+        when(transactionService.processTransfer(any(TransferRequest.class)))
+            .thenThrow(new ServiceUnavailableException("The user service is unavailable right now."));
+
+        mockMvc.perform(postJson("/api/payments/transfer", req))
+            .andExpect(status().isServiceUnavailable())
+            .andExpect(jsonPath("$.message").value("The user service is unavailable right now."));
+    }
+
+    @Test
+    @DisplayName("Unknown route - 404, not a 500")
+    void unknownRoute_isNotFound() throws Exception {
+        mockMvc.perform(authed(get("/api/payments/" + UUID.randomUUID() + "/nope")))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Unsupported HTTP method - 405, not a 500")
+    void wrongMethod_isMethodNotAllowed() throws Exception {
+        mockMvc.perform(authed(delete("/api/payments/transfer")))
+            .andExpect(status().isMethodNotAllowed());
     }
 }

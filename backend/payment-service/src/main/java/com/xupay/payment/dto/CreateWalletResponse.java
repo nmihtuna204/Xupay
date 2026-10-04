@@ -6,7 +6,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -26,5 +26,5 @@ public class CreateWalletResponse {
     private String currency;
     private Long balanceCents;  // Always 0 for new wallets
     private Boolean isActive;
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

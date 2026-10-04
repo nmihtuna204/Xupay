@@ -132,10 +132,22 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
                     log.warn("Unknown rule type: {}", rule.getRuleType());
                     return false;
             }
-        } catch (JsonProcessingException e) {
-            log.error("Failed to parse rule parameters for rule {}: {}", rule.getRuleName(), e.getMessage());
+        } catch (JsonProcessingException | IllegalArgumentException e) {
+            // A misconfigured rule is skipped like an unparseable one. A missing
+            // key used to throw a NullPointerException out of here, and one bad
+            // row in fraud_rules then failed every transfer with a 500.
+            log.error("Skipping fraud rule {}: invalid parameters: {}", rule.getRuleName(), e.getMessage());
             return false;
         }
+    }
+
+    /** The named parameter of a rule; IllegalArgumentException when it is absent. */
+    private static JsonNode required(JsonNode params, String name) {
+        JsonNode value = params.get(name);
+        if (value == null || value.isNull()) {
+            throw new IllegalArgumentException("missing parameter \"" + name + "\"");
+        }
+        return value;
     }
 
     /**
@@ -148,8 +160,8 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
      * }
      */
     private boolean evaluateVelocityRule(FraudRule rule, JsonNode params, UUID userId, Map<String, String> details) {
-        int maxTransactions = params.get("maxTransactions").asInt();
-        int timeWindowMinutes = params.get("timeWindowMinutes").asInt();
+        int maxTransactions = required(params, "maxTransactions").asInt();
+        int timeWindowMinutes = required(params, "timeWindowMinutes").asInt();
         
         boolean triggered = checkVelocityRule(userId, timeWindowMinutes, maxTransactions);
         
@@ -175,7 +187,7 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
      * }
      */
     private boolean evaluateAmountRule(FraudRule rule, JsonNode params, long amountCents, Map<String, String> details) {
-        long thresholdCents = params.get("thresholdCents").asLong();
+        long thresholdCents = required(params, "thresholdCents").asLong();
         
         boolean triggered = checkAmountRule(amountCents, thresholdCents);
         
@@ -202,10 +214,14 @@ public class FraudDetectionServiceImpl implements FraudDetectionService {
      * }
      */
     private boolean evaluatePatternRule(FraudRule rule, JsonNode params, TransferRequest request, UUID userId, Map<String, String> details) {
-        String pattern = params.get("pattern").asText();
+        String pattern = required(params, "pattern").asText();
         
         if ("ROUND_AMOUNT".equals(pattern)) {
-            long divisor = params.get("divisor").asLong();
+            long divisor = required(params, "divisor").asLong();
+            if (divisor <= 0) {
+                // amount % 0 would throw ArithmeticException on every transfer
+                throw new IllegalArgumentException("\"divisor\" must be positive");
+            }
             boolean triggered = (request.getAmountCents() % divisor == 0) && (request.getAmountCents() >= divisor);
             
             if (triggered) {

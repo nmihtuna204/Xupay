@@ -4,6 +4,7 @@ import com.xupay.payment.dto.TransferResponse;
 import com.xupay.payment.entity.Transaction;
 import com.xupay.payment.repository.TransactionRepository;
 import com.xupay.payment.service.IdempotencyService;
+import com.xupay.payment.util.Instants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -56,9 +57,19 @@ public class IdempotencyServiceImpl implements IdempotencyService {
             return Optional.empty();
         }
 
-        // Step 1: Check Redis cache (fast path)
+        // Step 1: Check Redis cache (fast path). The database below is the
+        // source of truth, so a Redis that is down - or an entry this version
+        // cannot deserialize - is a cache miss, not a failed payment. The read
+        // was unguarded, so a Redis outage failed every transfer, deposit and
+        // withdrawal with a 500.
         String cacheKey = buildCacheKey(idempotencyKey);
-        TransferResponse cachedResponse = redisTemplate.opsForValue().get(cacheKey);
+        TransferResponse cachedResponse = null;
+        try {
+            cachedResponse = redisTemplate.opsForValue().get(cacheKey);
+        } catch (Exception e) {
+            log.warn("Idempotency cache read failed, falling back to the database: key={}: {}",
+                    idempotencyKey, e.getMessage());
+        }
 
         if (cachedResponse != null) {
             log.info("Idempotency cache HIT (Redis): key={}", idempotencyKey);
@@ -114,12 +125,15 @@ public class IdempotencyServiceImpl implements IdempotencyService {
 
     @Override
     public boolean exists(UUID idempotencyKey) {
-        // Check Redis first
+        // Check Redis first (best effort, as in getIfExists)
         String cacheKey = buildCacheKey(idempotencyKey);
-        Boolean hasKey = redisTemplate.hasKey(cacheKey);
-        
-        if (Boolean.TRUE.equals(hasKey)) {
-            return true;
+        try {
+            if (Boolean.TRUE.equals(redisTemplate.hasKey(cacheKey))) {
+                return true;
+            }
+        } catch (Exception e) {
+            log.warn("Idempotency cache check failed, falling back to the database: key={}: {}",
+                    idempotencyKey, e.getMessage());
         }
         
         // Check database as fallback
@@ -158,8 +172,8 @@ public class IdempotencyServiceImpl implements IdempotencyService {
                 .description(transaction.getDescription())
                 .isFlagged(transaction.getIsFlagged())
                 .fraudScore(transaction.getFraudScore())
-                .createdAt(transaction.getCreatedAt())
-                .completedAt(transaction.getCompletedAt())
+                .createdAt(Instants.of(transaction.getCreatedAt()))
+                .completedAt(Instants.of(transaction.getCompletedAt()))
                 .build();
     }
 }

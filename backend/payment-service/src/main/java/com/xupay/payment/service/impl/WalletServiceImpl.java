@@ -10,6 +10,7 @@ import com.xupay.payment.entity.enums.WalletType;
 import com.xupay.payment.repository.ChartOfAccountsRepository;
 import com.xupay.payment.repository.WalletRepository;
 import com.xupay.payment.service.WalletService;
+import com.xupay.payment.util.Instants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,17 @@ public class WalletServiceImpl implements WalletService {
             throw new IllegalArgumentException("Wallet already exists for user: " + request.getUserId());
         }
 
+        // Every ledger entry and transaction is recorded in VND, so a wallet in
+        // any other currency would show VND movements as, say, USD. A null or
+        // over-long code also failed the NOT NULL / VARCHAR(3) column and came
+        // back as a misleading 409 "retry it".
+        String currency = request.getCurrency() == null
+                ? "VND"
+                : request.getCurrency().trim().toUpperCase(java.util.Locale.ROOT);
+        if (!"VND".equals(currency)) {
+            throw new IllegalArgumentException("Only VND wallets are supported");
+        }
+
         // Get GL account code based on wallet type
         String glAccountCode = getGlAccountCodeForWalletType(request.getWalletType());
 
@@ -57,7 +69,7 @@ public class WalletServiceImpl implements WalletService {
         wallet.setUserId(request.getUserId());
         wallet.setGlAccountCode(glAccountCode);
         wallet.setWalletType(request.getWalletType());
-        wallet.setCurrency(request.getCurrency());
+        wallet.setCurrency(currency);
         wallet.setIsActive(true);
         wallet.setIsFrozen(false);
 
@@ -72,7 +84,7 @@ public class WalletServiceImpl implements WalletService {
                 .currency(savedWallet.getCurrency())
                 .balanceCents(0L)  // New wallet always has 0 balance
                 .isActive(savedWallet.getIsActive())
-                .createdAt(savedWallet.getCreatedAt())
+                .createdAt(Instants.of(savedWallet.getCreatedAt()))
                 .build();
     }
 

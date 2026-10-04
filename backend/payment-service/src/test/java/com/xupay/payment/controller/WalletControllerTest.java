@@ -20,7 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -85,7 +85,7 @@ class WalletControllerTest {
             .currency("VND")
             .balanceCents(0L)
             .isActive(true)
-            .createdAt(LocalDateTime.now())
+            .createdAt(Instant.now())
             .build();
 
         when(walletService.createWallet(any(CreateWalletRequest.class))).thenReturn(resp);

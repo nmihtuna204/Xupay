@@ -5,7 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -29,8 +29,8 @@ public class TransactionDetailResponse {
     private UUID toUserId;
     private UUID fromWalletId;
     private UUID toWalletId;
-    private LocalDateTime createdAt;
-    private LocalDateTime completedAt;
+    private Instant createdAt;
+    private Instant completedAt;
 
     private List<LedgerEntryDetail> ledgerEntries;
 
@@ -45,6 +45,6 @@ public class TransactionDetailResponse {
         private String entryType;  // DEBIT or CREDIT
         private Long amountCents;
         private String description;
-        private LocalDateTime createdAt;
+        private Instant createdAt;
     }
 }

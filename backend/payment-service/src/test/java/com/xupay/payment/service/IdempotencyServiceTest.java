@@ -14,11 +14,12 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 
 import java.time.Duration;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,7 +59,7 @@ class IdempotencyServiceTest {
             .transactionId(testTransactionId)
             .status(TransactionStatus.COMPLETED)
             .amountCents(100_000L)
-            .completedAt(LocalDateTime.now())
+            .completedAt(Instant.now())
             .build();
 
         // Setup Redis template mock (lenient because not all tests use it)
@@ -113,6 +114,41 @@ class IdempotencyServiceTest {
         
         // Verify database was queried
         verify(transactionRepository).findByIdempotencyKey(testIdempotencyKey);
+    }
+
+    @Test
+    @DisplayName("Should fall back to database when Redis is unavailable")
+    void getIfExists_RedisDown_FallsBackToDatabase() {
+        // Given: Redis refuses connections - the database is the source of truth
+        when(valueOperations.get(anyString()))
+            .thenThrow(new RedisConnectionFailureException("Connection refused"));
+
+        com.xupay.payment.entity.Transaction mockTransaction = new com.xupay.payment.entity.Transaction();
+        mockTransaction.setId(testTransactionId);
+        mockTransaction.setStatus(TransactionStatus.COMPLETED);
+        mockTransaction.setAmountCents(100_000L);
+        mockTransaction.setCurrency("VND");
+        mockTransaction.setType(com.xupay.payment.entity.enums.TransactionType.TRANSFER);
+        when(transactionRepository.findByIdempotencyKey(testIdempotencyKey))
+            .thenReturn(Optional.of(mockTransaction));
+
+        // When
+        Optional<TransferResponse> result = idempotencyService.getIfExists(testIdempotencyKey);
+
+        // Then: the replay still works instead of failing the payment
+        assertThat(result).isPresent();
+        assertThat(result.get().getTransactionId()).isEqualTo(testTransactionId);
+    }
+
+    @Test
+    @DisplayName("Should treat a Redis outage as a miss when nothing is in the database")
+    void getIfExists_RedisDownAndDatabaseMiss_ReturnsEmpty() {
+        when(valueOperations.get(anyString()))
+            .thenThrow(new RedisConnectionFailureException("Connection refused"));
+        when(transactionRepository.findByIdempotencyKey(testIdempotencyKey))
+            .thenReturn(Optional.empty());
+
+        assertThat(idempotencyService.getIfExists(testIdempotencyKey)).isEmpty();
     }
 
     @Test

@@ -16,6 +16,7 @@ import com.xupay.payment.repository.*;
 import com.xupay.payment.service.FraudDetectionService;
 import com.xupay.payment.service.IdempotencyService;
 import com.xupay.payment.service.TransactionService;
+import com.xupay.payment.util.Instants;
 import com.xupay.user.grpc.ValidateUserResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -72,7 +73,7 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Transaction already processed (idempotent): returning cached response");
-            return replay(cachedResponse.get(), request.getFromUserId());
+            return replay(cachedResponse.get(), request.getFromUserId(), TransactionType.TRANSFER);
         }
 
         // Step 2: Validate users are different
@@ -139,7 +140,7 @@ public class TransactionServiceImpl implements TransactionService {
         // A retry with the same key may have committed while we waited for the lock.
         var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (committedMeanwhile.isPresent()) {
-            return replay(committedMeanwhile.get(), request.getFromUserId());
+            return replay(committedMeanwhile.get(), request.getFromUserId(), TransactionType.TRANSFER);
         }
 
         Wallet toWallet = walletRepository.findByUserId(request.getToUserId())
@@ -147,7 +148,7 @@ public class TransactionServiceImpl implements TransactionService {
 
         // Step 6: Validate wallets are active and not frozen
         validateWallet(fromWallet, "From wallet");
-        validateWallet(toWallet, "To wallet");
+        validateRecipientWallet(toWallet);
 
         // Step 7: Check sufficient balance
         Long fromBalance = walletRepository.getBalance(fromWallet.getId());
@@ -177,7 +178,12 @@ public class TransactionServiceImpl implements TransactionService {
             transaction.setFraudReason("Triggered rules: " + String.join(", ", fraudResult.getTriggeredRules()));
         }
         
-        transaction = transactionRepository.save(transaction);
+        // Flushed, not just saved: created_at is stamped when the row is
+        // INSERTed, which otherwise happened only at commit - after the
+        // response was built - so every new transaction answered
+        // "createdAt": null (and Redis cached it that way for 24h).
+        // Flushing at creation also keeps createdAt before completedAt.
+        transaction = transactionRepository.saveAndFlush(transaction);
         log.info("Transaction created: id={}, fraudScore={}, isFlagged={}", 
                 transaction.getId(), transaction.getFraudScore(), transaction.getIsFlagged());
 
@@ -192,8 +198,10 @@ public class TransactionServiceImpl implements TransactionService {
             log.info("Transaction completed: {}", transaction.getId());
 
             // Step 11: Record in User Service once the money has actually moved
-            recordTransactionInUserService(request.getFromUserId(), request.getAmountCents(), "send", transaction.getId());
-            recordTransactionInUserService(request.getToUserId(), request.getAmountCents(), "receive", transaction.getId());
+            recordTransactionInUserService(request.getFromUserId(), request.getAmountCents(), "send",
+                    transaction.getId(), request.getToUserId());
+            recordTransactionInUserService(request.getToUserId(), request.getAmountCents(), "receive",
+                    transaction.getId(), request.getFromUserId());
 
         } catch (Exception e) {
             log.error("Error creating ledger entries: ", e);
@@ -221,7 +229,7 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Deposit already processed (idempotent): returning cached response");
-            return replay(cachedResponse.get(), request.getUserId());
+            return replay(cachedResponse.get(), request.getUserId(), TransactionType.TOPUP);
         }
 
         // Step 1b: KYC status + daily receive limit via User Service (throws
@@ -237,7 +245,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
         var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (committedMeanwhile.isPresent()) {
-            return replay(committedMeanwhile.get(), request.getUserId());
+            return replay(committedMeanwhile.get(), request.getUserId(), TransactionType.TOPUP);
         }
         validateWallet(wallet, "Wallet");
 
@@ -256,7 +264,7 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setFraudScore(0);
         transaction.setIsFlagged(false);
         transaction.setIsReversed(false);
-        transaction = transactionRepository.save(transaction);
+        transaction = transactionRepository.saveAndFlush(transaction);
         log.info("Deposit transaction created: id={}", transaction.getId());
 
         // Step 4: Create balanced ledger entries
@@ -290,7 +298,8 @@ public class TransactionServiceImpl implements TransactionService {
             log.info("Deposit completed: {}", transaction.getId());
 
             // Step 6: Record in User Service asynchronously (daily usage tracking)
-            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "receive", transaction.getId());
+            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "receive",
+                    transaction.getId(), null);
 
         } catch (Exception e) {
             log.error("Error creating deposit ledger entries: ", e);
@@ -315,7 +324,7 @@ public class TransactionServiceImpl implements TransactionService {
         var cachedResponse = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (cachedResponse.isPresent()) {
             log.info("Withdrawal already processed (idempotent): returning cached response");
-            return replay(cachedResponse.get(), request.getUserId());
+            return replay(cachedResponse.get(), request.getUserId(), TransactionType.WITHDRAW);
         }
 
         // Step 1b: KYC status + daily send limit via User Service, before the
@@ -328,7 +337,7 @@ public class TransactionServiceImpl implements TransactionService {
                 .orElseThrow(() -> new IllegalArgumentException("Wallet not found for user: " + request.getUserId()));
         var committedMeanwhile = idempotencyService.getIfExists(request.getIdempotencyKey());
         if (committedMeanwhile.isPresent()) {
-            return replay(committedMeanwhile.get(), request.getUserId());
+            return replay(committedMeanwhile.get(), request.getUserId(), TransactionType.WITHDRAW);
         }
         validateWallet(wallet, "Wallet");
 
@@ -358,7 +367,7 @@ public class TransactionServiceImpl implements TransactionService {
         transaction.setFraudScore(0);
         transaction.setIsFlagged(false);
         transaction.setIsReversed(false);
-        transaction = transactionRepository.save(transaction);
+        transaction = transactionRepository.saveAndFlush(transaction);
         log.info("Withdrawal transaction created: id={}", transaction.getId());
 
         // Step 5: Create balanced ledger entries
@@ -392,7 +401,8 @@ public class TransactionServiceImpl implements TransactionService {
             log.info("Withdrawal completed: {}", transaction.getId());
 
             // Step 7: Record in User Service asynchronously (daily usage tracking)
-            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "send", transaction.getId());
+            recordTransactionInUserService(request.getUserId(), request.getAmountCents(), "send",
+                    transaction.getId(), null);
 
         } catch (Exception e) {
             log.error("Error creating withdrawal ledger entries: ", e);
@@ -425,7 +435,7 @@ public class TransactionServiceImpl implements TransactionService {
                         .entryType(entry.getEntryType().name())
                         .amountCents(entry.getAmountCents())
                         .description(entry.getDescription())
-                        .createdAt(entry.getCreatedAt())
+                        .createdAt(Instants.of(entry.getCreatedAt()))
                         .build())
                 .collect(Collectors.toList());
 
@@ -440,8 +450,8 @@ public class TransactionServiceImpl implements TransactionService {
                 .toUserId(transaction.getToUserId())
                 .fromWalletId(transaction.getFromWalletId())
                 .toWalletId(transaction.getToWalletId())
-                .createdAt(transaction.getCreatedAt())
-                .completedAt(transaction.getCompletedAt())
+                .createdAt(Instants.of(transaction.getCreatedAt()))
+                .completedAt(Instants.of(transaction.getCompletedAt()))
                 .ledgerEntries(entryDetails)
                 .build();
     }
@@ -480,8 +490,8 @@ public class TransactionServiceImpl implements TransactionService {
                         .toUserId(tx.getToUserId())
                         .fromWalletId(tx.getFromWalletId())
                         .toWalletId(tx.getToWalletId())
-                        .createdAt(tx.getCreatedAt())
-                        .completedAt(tx.getCompletedAt())
+                        .createdAt(Instants.of(tx.getCreatedAt()))
+                        .completedAt(Instants.of(tx.getCompletedAt()))
                         .build())
                 .collect(Collectors.toList());
 
@@ -565,13 +575,26 @@ public class TransactionServiceImpl implements TransactionService {
     }
 
     /**
-     * Idempotent replay: the stored response for a key, but only to a party of
-     * that transaction. Keys are client-generated UUIDs, so this should never
-     * trip for an honest client; it stops a reused key from returning someone
-     * else's transaction.
+     * The receiving wallet, checked without its freeze reason: that is the
+     * recipient's own note (the app asks for one when they freeze), and it
+     * used to be echoed to whoever tried to pay them.
      */
-    private TransferResponse replay(TransferResponse cached, UUID userId) {
-        if (!userId.equals(cached.getFromUserId()) && !userId.equals(cached.getToUserId())) {
+    private void validateRecipientWallet(Wallet wallet) {
+        if (!wallet.getIsActive() || wallet.getIsFrozen()) {
+            throw new IllegalArgumentException("The recipient's wallet can't receive money right now");
+        }
+    }
+
+    /**
+     * Idempotent replay: the stored response for a key, but only to a party of
+     * that transaction and only for the same kind of operation. Keys are
+     * client-generated UUIDs, so this should never trip for an honest client;
+     * it stops a reused key from returning someone else's transaction, or a
+     * deposit's result being reported as a withdrawal that never happened.
+     */
+    private TransferResponse replay(TransferResponse cached, UUID userId, TransactionType type) {
+        if (!userId.equals(cached.getFromUserId()) && !userId.equals(cached.getToUserId())
+                || cached.getType() != type) {
             throw new IllegalArgumentException("Idempotency key already used by another transaction");
         }
         return cached;
@@ -605,13 +628,17 @@ public class TransactionServiceImpl implements TransactionService {
     /**
      * Record transaction in User Service asynchronously (non-blocking), after
      * commit. Payment confirmation does NOT wait for this call.
+     *
+     * @param counterpartyUserId the other party of a transfer, null for a deposit or withdrawal
      */
-    private void recordTransactionInUserService(UUID userId, Long amountCents, String transactionType, UUID transactionId) {
-        afterCommit(() -> recordTransactionNow(userId, amountCents, transactionType, transactionId));
+    private void recordTransactionInUserService(UUID userId, Long amountCents, String transactionType,
+                                                UUID transactionId, UUID counterpartyUserId) {
+        afterCommit(() -> recordTransactionNow(userId, amountCents, transactionType, transactionId, counterpartyUserId));
     }
 
-    private void recordTransactionNow(UUID userId, Long amountCents, String transactionType, UUID transactionId) {
-        userServiceClient.recordTransactionAsync(userId, amountCents, transactionType, transactionId)
+    private void recordTransactionNow(UUID userId, Long amountCents, String transactionType,
+                                      UUID transactionId, UUID counterpartyUserId) {
+        userServiceClient.recordTransactionAsync(userId, amountCents, transactionType, transactionId, counterpartyUserId)
                 .thenAccept(response -> {
                     if (response.getSuccess()) {
                         log.info("Transaction {} recorded in User Service for user {}", transactionId, userId);
@@ -648,8 +675,8 @@ public class TransactionServiceImpl implements TransactionService {
                 .description(transaction.getDescription())
                 .isFlagged(transaction.getIsFlagged())
                 .fraudScore(transaction.getFraudScore())
-                .createdAt(transaction.getCreatedAt())
-                .completedAt(transaction.getCompletedAt())
+                .createdAt(Instants.of(transaction.getCreatedAt()))
+                .completedAt(Instants.of(transaction.getCompletedAt()))
                 .build();
     }
 }

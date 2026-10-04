@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
 /**
@@ -35,6 +35,6 @@ public class TransferResponse {
     private String description;
     private Boolean isFlagged;
     private Integer fraudScore;
-    private LocalDateTime createdAt;
-    private LocalDateTime completedAt;
+    private Instant createdAt;
+    private Instant completedAt;
 }

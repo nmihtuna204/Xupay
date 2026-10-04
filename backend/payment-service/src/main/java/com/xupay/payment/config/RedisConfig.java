@@ -4,12 +4,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.xupay.payment.dto.TransferResponse;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.resource.Delay;
+import org.springframework.boot.autoconfigure.data.redis.ClientResourcesBuilderCustomizer;
+import org.springframework.boot.autoconfigure.data.redis.LettuceClientOptionsBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 /**
  * RedisConfig
@@ -26,6 +33,30 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
  */
 @Configuration
 public class RedisConfig {
+
+    /**
+     * Every use of Redis here is best effort: the idempotency cache falls back
+     * to the database and the signed-out token check lets requests through.
+     * By default Lettuce queues commands while it reconnects and fails them
+     * only at the command timeout, so an outage would add that delay to every
+     * request. Rejecting commands while disconnected makes them fail at once
+     * and the fallbacks take over immediately.
+     */
+    @Bean
+    public LettuceClientOptionsBuilderCustomizer rejectCommandsWhileDisconnected() {
+        return options -> options.disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS);
+    }
+
+    /**
+     * Lettuce's default backoff between reconnect attempts grows to 30
+     * seconds, so after an outage Redis could be back for half a minute while
+     * signed-out tokens were still let through here. Capped at 2 seconds.
+     */
+    @Bean
+    public ClientResourcesBuilderCustomizer reconnectQuickly() {
+        return resources -> resources.reconnectDelay(
+                Delay.exponential(Duration.ofMillis(100), Duration.ofSeconds(2), 2, TimeUnit.MILLISECONDS));
+    }
 
     /**
      * Create RedisTemplate bean for caching TransferResponse objects.

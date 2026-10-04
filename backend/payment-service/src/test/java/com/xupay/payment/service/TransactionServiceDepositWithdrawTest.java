@@ -1,6 +1,8 @@
 package com.xupay.payment.service;
 
 import com.xupay.payment.dto.DepositRequest;
+import com.xupay.payment.dto.FraudEvaluationResult;
+import com.xupay.payment.dto.TransferRequest;
 import com.xupay.payment.dto.TransferResponse;
 import com.xupay.payment.dto.WithdrawRequest;
 import com.xupay.payment.entity.LedgerEntry;
@@ -16,6 +18,7 @@ import com.xupay.payment.repository.TransactionRepository;
 import com.xupay.payment.repository.WalletRepository;
 import com.xupay.payment.service.impl.TransactionServiceImpl;
 import com.xupay.payment.util.TestDataBuilder;
+import com.xupay.user.grpc.ValidateUserResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,7 +79,7 @@ class TransactionServiceDepositWithdrawTest {
         wallet = TestDataBuilder.createTestWallet(userId, "1110");
 
         // Async user-service recording should never block or fail the flow
-        lenient().when(userServiceClient.recordTransactionAsync(any(), any(), anyString(), any()))
+        lenient().when(userServiceClient.recordTransactionAsync(any(), any(), anyString(), any(), any()))
                 .thenReturn(new CompletableFuture<>());
         // Repository saves return their argument (with an ID for transactions)
         lenient().when(transactionRepository.save(any(Transaction.class))).thenAnswer(inv -> {
@@ -87,6 +90,30 @@ class TransactionServiceDepositWithdrawTest {
             return t;
         });
         lenient().when(ledgerEntryRepository.save(any(LedgerEntry.class))).thenAnswer(inv -> inv.getArgument(0));
+        // A flush INSERTs the row, which is when Hibernate stamps @CreationTimestamp
+        lenient().when(transactionRepository.saveAndFlush(any(Transaction.class))).thenAnswer(inv -> {
+            Transaction t = inv.getArgument(0);
+            if (t.getId() == null) {
+                t.setId(UUID.randomUUID());
+            }
+            if (t.getCreatedAt() == null) {
+                t.setCreatedAt(java.time.LocalDateTime.now());
+            }
+            return t;
+        });
+    }
+
+    @Test
+    @DisplayName("Deposit - the response carries the transaction's creation time (was null)")
+    void deposit_responseHasCreatedAt() {
+        DepositRequest request = new DepositRequest(UUID.randomUUID(), userId, 50_000L, null, null, null);
+        when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        TransferResponse response = transactionService.processDeposit(request);
+
+        assertThat(response.getCreatedAt()).isNotNull();
+        verify(transactionRepository).saveAndFlush(any(Transaction.class));
     }
 
     // =========================================================
@@ -137,6 +164,7 @@ class TransactionServiceDepositWithdrawTest {
                 .transactionId(UUID.randomUUID())
                 .idempotencyKey(idempotencyKey)
                 .toUserId(userId)
+                .type(TransactionType.TOPUP)
                 .status(TransactionStatus.COMPLETED)
                 .build();
         when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(cached));
@@ -248,6 +276,7 @@ class TransactionServiceDepositWithdrawTest {
                 .transactionId(UUID.randomUUID())
                 .idempotencyKey(idempotencyKey)
                 .fromUserId(userId)
+                .type(TransactionType.WITHDRAW)
                 .status(TransactionStatus.COMPLETED)
                 .build();
         when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(cached));
@@ -314,6 +343,7 @@ class TransactionServiceDepositWithdrawTest {
                 .transactionId(UUID.randomUUID())
                 .idempotencyKey(idempotencyKey)
                 .fromUserId(userId)
+                .type(TransactionType.WITHDRAW)
                 .status(TransactionStatus.COMPLETED)
                 .build();
         // First look: nothing yet. Second look (after the lock): the twin request's result.
@@ -345,5 +375,85 @@ class TransactionServiceDepositWithdrawTest {
                 new DepositRequest(idempotencyKey, userId, 50_000L, null, null, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Idempotency key already used");
+    }
+
+    @Test
+    @DisplayName("Withdraw - a key already used for a deposit is refused, not reported as a withdrawal")
+    void withdraw_rejectsIdempotencyKeyOfADeposit() {
+        UUID idempotencyKey = UUID.randomUUID();
+        TransferResponse deposit = TransferResponse.builder()
+                .transactionId(UUID.randomUUID())
+                .idempotencyKey(idempotencyKey)
+                .toUserId(userId)
+                .type(TransactionType.TOPUP)
+                .status(TransactionStatus.COMPLETED)
+                .build();
+        when(idempotencyService.getIfExists(idempotencyKey)).thenReturn(Optional.of(deposit));
+
+        assertThatThrownBy(() -> transactionService.processWithdraw(
+                new WithdrawRequest(idempotencyKey, userId, 1_000L, null, null, null)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Idempotency key already used");
+        verify(ledgerEntryRepository, never()).save(any());
+    }
+
+    // =========================================================
+    // TRANSFER
+    // =========================================================
+
+    private UUID recipientId;
+    private Wallet recipientWallet;
+
+    private TransferRequest transferOf(long amountCents) {
+        recipientId = UUID.randomUUID();
+        recipientWallet = TestDataBuilder.createTestWallet(recipientId, "1110");
+        TransferRequest request = new TransferRequest(UUID.randomUUID(), userId, recipientId, amountCents, null, null, null);
+        when(idempotencyService.getIfExists(request.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(fraudDetectionService.evaluateTransaction(any(), any()))
+                .thenReturn(FraudEvaluationResult.builder().triggeredRules(List.of()).build());
+        when(userServiceClient.validateUser(any(), any(), anyString()))
+                .thenReturn(ValidateUserResponse.getDefaultInstance());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+        when(walletRepository.findByUserId(recipientId)).thenReturn(Optional.of(recipientWallet));
+        return request;
+    }
+
+    @Test
+    @DisplayName("Transfer - a frozen recipient is refused without revealing their freeze reason")
+    void transfer_frozenRecipient_doesNotLeakFreezeReason() {
+        TransferRequest request = transferOf(1_000L);
+        recipientWallet.setIsFrozen(true);
+        recipientWallet.setFreezeReason("Private: lost my phone at the airport");
+
+        assertThatThrownBy(() -> transactionService.processTransfer(request))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("can't receive")
+                .hasMessageNotContaining("airport");
+        verify(ledgerEntryRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Transfer - usage is recorded with the counterparty of each side")
+    void transfer_recordsUsageWithCounterparty() {
+        TransferRequest request = transferOf(1_000L);
+        when(walletRepository.getBalance(wallet.getId())).thenReturn(100_000L);
+
+        TransferResponse response = transactionService.processTransfer(request);
+
+        assertThat(response.getStatus()).isEqualTo(TransactionStatus.COMPLETED);
+        verify(userServiceClient).recordTransactionAsync(userId, 1_000L, "send", response.getTransactionId(), recipientId);
+        verify(userServiceClient).recordTransactionAsync(recipientId, 1_000L, "receive", response.getTransactionId(), userId);
+    }
+
+    @Test
+    @DisplayName("Transfer - deposits and withdrawals record usage without a counterparty")
+    void depositAndWithdraw_recordUsageWithoutCounterparty() {
+        DepositRequest deposit = new DepositRequest(UUID.randomUUID(), userId, 50_000L, null, null, null);
+        when(idempotencyService.getIfExists(deposit.getIdempotencyKey())).thenReturn(Optional.empty());
+        when(walletRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(wallet));
+
+        TransferResponse response = transactionService.processDeposit(deposit);
+
+        verify(userServiceClient).recordTransactionAsync(userId, 50_000L, "receive", response.getTransactionId(), null);
     }
 }
