@@ -166,18 +166,20 @@ Write-Host "Email: $($response.email)"
 ### 5. Logout
 
 **Endpoint:** `POST /api/auth/logout`  
-**Auth Required:** Yes (Bearer token)  
-**Returns:** Success message
+**Auth Required:** No (send the token to revoke, as Bearer header or `xupay_token` cookie)  
+**Returns:** 204 No Content, and deletes the `xupay_token` cookie
+
+The token is revoked in both services until it would have expired (its ID is
+stored in Redis). Only this session ends; the user's other sessions keep working.
 
 **PowerShell Request:**
 ```powershell
-$response = Invoke-RestMethod -Uri "http://localhost:8081/api/auth/logout" `
+Invoke-RestMethod -Uri "http://localhost:8081/api/auth/logout" `
     -Method POST `
     -Headers @{
         "Authorization" = "Bearer $token"
     }
-
-Write-Host $response.message
+# $token is now refused by user-service and payment-service (401)
 ```
 
 ---
@@ -758,12 +760,13 @@ mvn spring-boot:run
 
 ## 🔒 Security Notes
 
-1. **JWT Expiry:** Tokens expire after 24 hours
-2. **HTTPS Required:** Production must use HTTPS only
-3. **Rate Limiting:** 100 requests/minute per IP
-4. **CORS:** Configured for allowed origins only
-5. **SQL Injection:** Protected by parameterized queries
-6. **XSS:** Protected by Spring Security headers
+1. **JWT Expiry:** Tokens expire after 24 hours; logout revokes a token early (Redis)
+2. **HTTPS Required:** Production must use HTTPS only, with `AUTH_COOKIE_SECURE=true`
+3. **Sign-in limits:** 5 failures per email+IP or 20 per IP in 15 minutes -> 429 for 15 minutes (no account lock)
+4. **Token storage:** the web app gets the token as an HttpOnly, SameSite=Strict cookie, never in JavaScript
+5. **CORS:** only the web app's origins (`http://localhost:3000`, production domain)
+6. **SQL Injection:** Protected by parameterized queries
+7. **XSS:** Protected by Spring Security headers
 
 ---
 

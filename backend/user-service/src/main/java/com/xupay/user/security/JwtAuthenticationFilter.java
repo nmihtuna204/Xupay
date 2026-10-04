@@ -23,8 +23,9 @@ import java.util.UUID;
 
 /**
  * JwtAuthenticationFilter
- * Intercepts every request, extracts JWT from Authorization header,
- * validates token, and sets Spring Security context.
+ * Intercepts every request, extracts the JWT (Authorization header, else the
+ * sign-in cookie - see RequestToken), validates it (signature, expiry, not
+ * signed out) and sets the Spring Security context.
  */
 @Component
 @RequiredArgsConstructor
@@ -34,65 +35,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
     private final UserRepository userRepository;
 
-    private static final String AUTHORIZATION_HEADER = "Authorization";
-    private static final String BEARER_PREFIX = "Bearer ";
-
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
 
+        // Authentication is attempted in isolation, and the chain runs exactly
+        // once, outside it. The chain used to run inside this try for
+        // anonymous and rejected requests, so anything the rest of the chain
+        // threw (a client hanging up mid-response, an error the controllers
+        // did not handle) landed in the catch below - logged as an auth
+        // failure - and then the whole request ran a second time.
         try {
-            // Extract JWT token from Authorization header
-            String token = extractTokenFromRequest(request);
-
-            // If no token found, continue without authentication
-            if (token == null) {
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // Validate token
-            if (!jwtService.validateToken(token)) {
-                log.warn("Invalid JWT token for request: {}", request.getRequestURI());
-                filterChain.doFilter(request, response);
-                return;
-            }
-
-            // Extract user information from token
-            UUID userId = jwtService.getUserIdFromToken(token);
-            String email = jwtService.getEmailFromToken(token);
-
-            // Set authentication in SecurityContext
-            if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // The role is read from the database rather than a token claim,
-                // so promoting or demoting an admin takes effect on the next
-                // request instead of when the 24h token expires. A token for a
-                // user that no longer exists authenticates nobody.
-                var role = userRepository.findRoleById(userId);
-                if (role.isEmpty()) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-                UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                        userId.toString(),   // Principal (user ID as string for Principal#getName())
-                        token,               // Credentials (token for downstream use)
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role.get().name()))
-                    );
-
-                // Set request details
-                authentication.setDetails(
-                    new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-
-                // Set authentication in SecurityContext
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-
-                log.debug("Authenticated user {} for request: {}", email, request.getRequestURI());
-            }
-
+            authenticate(request);
         } catch (Exception e) {
             log.error("Cannot set user authentication in SecurityContext", e);
         }
@@ -100,17 +56,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 
-    /**
-     * Extract JWT token from Authorization header
-     * Format: "Bearer {token}"
-     */
-    private String extractTokenFromRequest(HttpServletRequest request) {
-        String authHeader = request.getHeader(AUTHORIZATION_HEADER);
+    /** Sets the SecurityContext from a valid token; leaves it empty otherwise. */
+    private void authenticate(HttpServletRequest request) {
+        // Extract JWT token from the Authorization header or the cookie
+        String token = RequestToken.from(request).map(RequestToken::value).orElse(null);
 
-        if (authHeader != null && authHeader.startsWith(BEARER_PREFIX)) {
-            return authHeader.substring(BEARER_PREFIX.length());
+        // If no token found, continue without authentication
+        if (token == null) {
+            return;
         }
 
-        return null;
+        // Validate token
+        if (!jwtService.validateToken(token)) {
+            log.warn("Invalid JWT token for request: {}", request.getRequestURI());
+            return;
+        }
+
+        // Extract user information from token
+        UUID userId = jwtService.getUserIdFromToken(token);
+        String email = jwtService.getEmailFromToken(token);
+
+        // Set authentication in SecurityContext
+        if (userId != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // The role is read from the database rather than a token claim,
+            // so promoting or demoting an admin takes effect on the next
+            // request instead of when the 24h token expires. A token for a
+            // user that no longer exists authenticates nobody.
+            var role = userRepository.findRoleById(userId);
+            if (role.isEmpty()) {
+                return;
+            }
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                    userId.toString(),   // Principal (user ID as string for Principal#getName())
+                    token,               // Credentials (token for downstream use)
+                    List.of(new SimpleGrantedAuthority("ROLE_" + role.get().name()))
+                );
+
+            // Set request details
+            authentication.setDetails(
+                new WebAuthenticationDetailsSource().buildDetails(request)
+            );
+
+            // Set authentication in SecurityContext
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            log.debug("Authenticated user {} for request: {}", email, request.getRequestURI());
+        }
     }
 }

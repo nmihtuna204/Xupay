@@ -5,6 +5,7 @@ import com.xupay.user.dto.request.RejectKycRequest;
 import com.xupay.user.dto.request.UploadKycDocumentRequest;
 import com.xupay.user.dto.response.KycDocumentResponse;
 import com.xupay.user.service.KycService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,14 +66,17 @@ public class KycController {
     @GetMapping("/{id}")
     public ResponseEntity<KycDocumentResponse> getDocument(
             @PathVariable UUID id,
-            Principal principal) {
+            Principal principal,
+            HttpServletRequest request) {
         UUID userId = UUID.fromString(principal.getName());
         log.debug("User {} fetching document {}", userId, id);
-        
+
         KycDocumentResponse document = kycService.getDocumentById(id);
-        
-        // Security check: Only owner or admin can view
-        if (!document.userId().equals(userId)) {
+
+        // Security check: only the owner or an admin can view. The admin half
+        // was documented (API docs: "owner or admin with ROLE_ADMIN") but never
+        // implemented, so reviewers were refused the documents they review.
+        if (!document.userId().equals(userId) && !request.isUserInRole("ADMIN")) {
             log.warn("User {} attempted to access document {} owned by {}", userId, id, document.userId());
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }

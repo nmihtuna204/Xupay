@@ -18,6 +18,7 @@ public record ProfileResponse(
     String lastName,
     String phone,
     LocalDate dateOfBirth,
+    String nationality,
     KycStatus kycStatus,
     KycTier kycTier,
     Boolean isActive,

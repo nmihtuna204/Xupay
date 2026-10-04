@@ -43,10 +43,12 @@ public class OpenApiConfig {
                                 ```
                                 
                                 ## KYC Tiers
-                                - **TIER_0**: New users - $500/day send limit
-                                - **TIER_1**: Basic verification - $5000/day send limit
-                                - **TIER_2**: Enhanced verification - $50000/day send limit
-                                - **TIER_3**: Premium customers - $100000/day send limit
+                                - **TIER_0**: New users - 2,500,000 VND/day send limit
+                                - **TIER_1**: Basic verification - 25,000,000 VND/day send limit
+                                - **TIER_2**: Enhanced verification - 250,000,000 VND/day send limit
+                                - **TIER_3**: Premium customers - 2,500,000,000 VND/day send limit
+
+                                Amounts in the API are `*Cents` fields: VND x 100.
                                 """)
                         .contact(new Contact()
                                 .name("XuPay Development Team")

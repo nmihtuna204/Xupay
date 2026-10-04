@@ -55,7 +55,7 @@ public interface KycDocumentRepository extends JpaRepository<KycDocument, UUID> 
      */
     @Query("SELECT d FROM KycDocument d WHERE d.expiresAt IS NOT NULL " +
            "AND d.expiresAt BETWEEN :now AND :futureDate " +
-           "AND d.verificationStatus = 'approved'")
+           "AND d.verificationStatus = 'APPROVED'")
     List<KycDocument> findDocumentsExpiringSoon(
         @Param("now") OffsetDateTime now,
         @Param("futureDate") OffsetDateTime futureDate
@@ -66,13 +66,16 @@ public interface KycDocumentRepository extends JpaRepository<KycDocument, UUID> 
      */
     @Query("SELECT d FROM KycDocument d WHERE d.expiresAt IS NOT NULL " +
            "AND d.expiresAt < :now " +
-           "AND d.verificationStatus != 'expired'")
+           "AND d.verificationStatus <> 'EXPIRED'")
     List<KycDocument> findExpiredDocuments(@Param("now") OffsetDateTime now);
 
     /**
      * Check if user has any approved documents
      */
     boolean existsByUserIdAndVerificationStatus(UUID userId, String verificationStatus);
+
+    /** Whether the user has a document in this status other than {@code excludedId}. */
+    boolean existsByUserIdAndVerificationStatusAndIdNot(UUID userId, String verificationStatus, UUID excludedId);
 
     /**
      * Count documents by verification status (for analytics)

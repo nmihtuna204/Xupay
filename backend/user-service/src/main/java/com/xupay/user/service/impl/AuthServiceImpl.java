@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Locale;
 import java.util.UUID;
 
 /**
@@ -42,9 +43,14 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse register(RegisterRequest request) {
         log.info("Registering new user with email: {}", request.email());
 
+        // Email addresses are case-insensitive in practice. Stored as typed,
+        // "An@x.com" could not sign in as "an@x.com", and "AN@x.com" could
+        // register a second account for the same mailbox.
+        String email = normalizeEmail(request.email());
+
         // Check if email already exists
-        if (userRepository.existsByEmail(request.email())) {
-            throw new DuplicateEmailException(request.email());
+        if (userRepository.existsByEmailIgnoreCase(email)) {
+            throw new DuplicateEmailException(email);
         }
 
         // Check if phone already exists (if provided)
@@ -54,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Create user entity
         User user = User.builder()
-                .email(request.email())
+                .email(email)
                 .passwordHash(passwordEncoder.encode(request.password()))
                 .firstName(request.firstName())
                 .lastName(request.lastName())
@@ -105,8 +111,8 @@ public class AuthServiceImpl implements AuthService {
     public AuthResponse login(LoginRequest request) {
         log.info("Login attempt for email: {}", request.email());
 
-        // Find user by email
-        User user = userRepository.findByEmail(request.email())
+        // Find user by email, whatever case it was typed in
+        User user = userRepository.findByEmailNormalized(request.email())
                 .orElseThrow(() -> new InvalidCredentialsException());
 
         // Verify password
@@ -145,8 +151,18 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public void logout(String token) {
+        jwtService.revokeToken(token);
+    }
+
+    @Override
     public boolean validateToken(String token) {
         return jwtService.validateToken(token);
+    }
+
+    /** Trimmed and lowercased: the form every new account's email is stored in. */
+    static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     @Override

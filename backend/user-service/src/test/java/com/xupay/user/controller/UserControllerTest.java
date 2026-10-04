@@ -70,7 +70,7 @@ class UserControllerTest {
         User user = User.builder().id(testUserId).email("test@example.com").build();
         ProfileResponse response = new ProfileResponse(
             testUserId, "test@example.com", "John", "Doe", "+84901234567",
-            LocalDate.of(1990, 1, 1), KycStatus.APPROVED, KycTier.TIER_2, true, OffsetDateTime.now()
+            LocalDate.of(1990, 1, 1), "VNM", KycStatus.APPROVED, KycTier.TIER_2, true, OffsetDateTime.now()
         );
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(user));
@@ -87,7 +87,7 @@ class UserControllerTest {
     @DisplayName("PUT /api/users/me/profile - Should update user profile")
     void updateMyProfile_shouldReturnUpdatedProfile() throws Exception {
         UpdateProfileRequest request = new UpdateProfileRequest(
-            "Jane", "Smith", "+84907654321", LocalDate.of(1992, 5, 15)
+            "Jane", "Smith", "+84907654321", LocalDate.of(1992, 5, 15), "vnm"
         );
 
         User user = User.builder().id(testUserId).email("test@example.com").build();
@@ -95,7 +95,7 @@ class UserControllerTest {
         
         ProfileResponse response = new ProfileResponse(
             testUserId, "test@example.com", "Jane", "Smith", "+84907654321",
-            LocalDate.of(1992, 5, 15), KycStatus.APPROVED, KycTier.TIER_2, true, OffsetDateTime.now()
+            LocalDate.of(1992, 5, 15), "VNM", KycStatus.APPROVED, KycTier.TIER_2, true, OffsetDateTime.now()
         );
 
         when(userRepository.findById(testUserId)).thenReturn(Optional.of(user));
@@ -109,7 +109,13 @@ class UserControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)))
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.firstName").value("Jane"));
+            .andExpect(jsonPath("$.firstName").value("Jane"))
+            .andExpect(jsonPath("$.nationality").value("VNM"));
+
+        // The nationality reaches the mapper, normalised to the ISO form
+        org.mockito.ArgumentCaptor<UpdateProfileRequest> sent = org.mockito.ArgumentCaptor.forClass(UpdateProfileRequest.class);
+        org.mockito.Mockito.verify(userMapper).updateUserFromRequest(sent.capture(), any(User.class));
+        org.assertj.core.api.Assertions.assertThat(sent.getValue().nationality()).isEqualTo("VNM");
     }
 
     @Test
@@ -228,5 +234,22 @@ class UserControllerTest {
                 .principal(mockPrincipal)
                 .with(csrf()))
             .andExpect(status().isNoContent());
+    }
+
+    @Test
+    @DisplayName("Unknown route - 404, not a 500")
+    void unknownRoute_isNotFound() throws Exception {
+        mockMvc.perform(get("/api/users/me/no-such-thing")
+                .principal(mockPrincipal))
+            .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("Unsupported HTTP method - 405, not a 500")
+    void wrongMethod_isMethodNotAllowed() throws Exception {
+        mockMvc.perform(delete("/api/users/me/profile")
+                .principal(mockPrincipal)
+                .with(csrf()))
+            .andExpect(status().isMethodNotAllowed());
     }
 }

@@ -121,6 +121,31 @@ class KycServiceImplTest {
     }
 
     @Test
+    @DisplayName("Rejecting a PENDING user's only document rejects their KYC")
+    void reject_lastPendingDocument_rejectsUser() {
+        KycDocument doc = documentOf(user);
+
+        kycService.rejectDocument(doc.getId(), adminId, new RejectKycRequest("blurry"));
+
+        assertThat(user.getKycStatus()).isEqualTo(KycStatus.REJECTED);
+    }
+
+    @Test
+    @DisplayName("Rejecting one document leaves the user PENDING while another awaits review")
+    void reject_withAnotherDocumentPending_keepsUserPending() {
+        KycDocument doc = documentOf(user);
+        when(kycDocumentRepository.existsByUserIdAndVerificationStatusAndIdNot(user.getId(), "PENDING", doc.getId()))
+                .thenReturn(true);
+
+        kycService.rejectDocument(doc.getId(), adminId, new RejectKycRequest("blurry"));
+
+        assertThat(doc.getVerificationStatus()).isEqualTo("REJECTED");
+        assertThat(user.getKycStatus()).isEqualTo(KycStatus.PENDING);
+        assertThat(user.canTransact()).isTrue();
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("A REJECTED user who uploads a new document is back to PENDING (was locked forever)")
     void upload_afterRejection_reopensReview() {
         user.setKycStatus(KycStatus.REJECTED);

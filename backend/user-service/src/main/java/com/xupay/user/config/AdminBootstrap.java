@@ -45,7 +45,7 @@ public class AdminBootstrap implements ApplicationRunner {
         }
         String email = adminEmail.trim().toLowerCase();
 
-        userRepository.findByEmail(email).ifPresentOrElse(user -> {
+        userRepository.findByEmailNormalized(email).ifPresentOrElse(user -> {
             if (user.getRole() != UserRole.ADMIN) {
                 user.setRole(UserRole.ADMIN);
                 userRepository.save(user);

@@ -1,10 +1,12 @@
 package com.xupay.user.grpc;
 
 import com.xupay.user.dto.response.LimitCheckResponse;
+import com.xupay.user.entity.DailyUsage;
 import com.xupay.user.entity.User;
 import com.xupay.user.exception.UserNotFoundException;
 import com.xupay.user.repository.DailyUsageRepository;
 import com.xupay.user.repository.TransactionLimitRepository;
+import com.xupay.user.repository.UserContactRepository;
 import com.xupay.user.repository.UserRepository;
 import com.xupay.user.service.LimitService;
 import io.grpc.Status;
@@ -14,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 /**
@@ -30,6 +34,7 @@ public class UserGrpcServiceImpl extends UserServiceGrpc.UserServiceImplBase {
     private final LimitService limitService;
     private final DailyUsageRepository dailyUsageRepository;
     private final TransactionLimitRepository transactionLimitRepository;
+    private final UserContactRepository userContactRepository;
 
     /**
      * Validates if a user can perform a transaction
@@ -262,7 +267,9 @@ public class UserGrpcServiceImpl extends UserServiceGrpc.UserServiceImplBase {
             // Update daily usage (thread-safe UPSERT)
             LocalDate today = LocalDate.now();
             if ("send".equalsIgnoreCase(request.getTransactionType())) {
-                dailyUsageRepository.incrementSentAmount(userId, today, request.getAmountCents());
+                dailyUsageRepository.incrementSentAmount(userId, today, request.getAmountCents(),
+                        DailyUsage.hourKey(LocalTime.now()));
+                recordContactTransfer(userId, request.getCounterpartyUserId());
             } else if ("receive".equalsIgnoreCase(request.getTransactionType())) {
                 dailyUsageRepository.incrementReceivedAmount(userId, today, request.getAmountCents());
             }
@@ -291,6 +298,24 @@ public class UserGrpcServiceImpl extends UserServiceGrpc.UserServiceImplBase {
     // =====================================================
     // HELPER METHODS
     // =====================================================
+
+    /**
+     * A transfer to someone in the sender's contacts counts towards that
+     * contact's transaction count and last-used time. Nothing updated those
+     * columns, so every contact read "0 transactions" forever. Best effort:
+     * the daily usage just recorded is what limits depend on, so a problem
+     * here is logged rather than failing the call.
+     */
+    private void recordContactTransfer(UUID senderId, String counterpartyUserId) {
+        if (counterpartyUserId == null || counterpartyUserId.isBlank()) {
+            return; // a withdrawal, or a caller that predates the field
+        }
+        try {
+            userContactRepository.recordTransfer(senderId, UUID.fromString(counterpartyUserId), OffsetDateTime.now());
+        } catch (Exception e) {
+            log.warn("Could not update contact stats for {} -> {}: {}", senderId, counterpartyUserId, e.getMessage());
+        }
+    }
 
     private UUID parseUserId(String userIdStr) {
         try {

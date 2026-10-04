@@ -30,6 +30,24 @@ public interface UserRepository extends JpaRepository<User, UUID> {
      */
     Optional<User> findByEmail(String email);
 
+    /** Case-insensitive match; first, should legacy rows differ only by case. */
+    Optional<User> findFirstByEmailIgnoreCaseOrderByCreatedAtAsc(String email);
+
+    boolean existsByEmailIgnoreCase(String email);
+
+    /**
+     * The account an email address belongs to, whatever its case. Emails are
+     * stored lowercase from now on, but accounts created before that keep
+     * the case they were typed in; an exact match wins so that two legacy
+     * accounts differing only by case each stay reachable.
+     */
+    default Optional<User> findByEmailNormalized(String email) {
+        String trimmed = email.trim();
+        return findByEmail(trimmed)
+                .or(() -> findByEmail(trimmed.toLowerCase(java.util.Locale.ROOT)))
+                .or(() -> findFirstByEmailIgnoreCaseOrderByCreatedAtAsc(trimmed));
+    }
+
     /**
      * Find user by phone number (unique constraint)
      */

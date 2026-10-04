@@ -1,5 +1,7 @@
 package com.xupay.user.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.xupay.user.dto.response.DailyUsageResponse;
 import com.xupay.user.dto.response.LimitCheckResponse;
 import com.xupay.user.dto.response.UserLimitsResponse;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,6 +35,7 @@ public class LimitServiceImpl implements LimitService {
     private final UserRepository userRepository;
     private final TransactionLimitRepository transactionLimitRepository;
     private final DailyUsageRepository dailyUsageRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -140,16 +144,45 @@ public class LimitServiceImpl implements LimitService {
 
         // Check daily limit based on type
         if ("send".equalsIgnoreCase(type)) {
+            Long remaining = limits.getDailySendLimitCents() - usage.getTotalSentCents();
             if (!limits.isDailySendWithinLimit(usage.getTotalSentCents(), amountCents)) {
-                Long remaining = limits.getDailySendLimitCents() - usage.getTotalSentCents();
                 return new LimitCheckResponse(
                         false,
                         "Would exceed the daily send limit of " + vnd(limits.getDailySendLimitCents()),
                         Math.max(0L, remaining)
                 );
             }
-            Long remaining = limits.getDailySendLimitCents() - usage.getTotalSentCents() - amountCents;
-            return new LimitCheckResponse(true, "Transaction allowed", Math.max(0L, remaining));
+
+            // The count and monthly limits each tier advertises (Settings, the
+            // landing page) were never checked. They apply to outgoing
+            // payments - transfers and withdrawals, both recorded as "send" -
+            // not to money received.
+            int sentToday = usage.getTotalSentCount() != null ? usage.getTotalSentCount() : 0;
+            if (sentToday >= limits.getMaxTransactionsPerDay()) {
+                return new LimitCheckResponse(
+                        false,
+                        "Daily limit reached: " + limits.getMaxTransactionsPerDay() + " outgoing payments per day",
+                        Math.max(0L, remaining)
+                );
+            }
+            if (sentInCurrentHour(usage) >= limits.getMaxTransactionsPerHour()) {
+                return new LimitCheckResponse(
+                        false,
+                        "Hourly limit reached: " + limits.getMaxTransactionsPerHour() + " outgoing payments per hour",
+                        Math.max(0L, remaining)
+                );
+            }
+            Long sentThisMonth = dailyUsageRepository.getMonthlySentTotal(userId, today.withDayOfMonth(1), today);
+            long monthToDate = sentThisMonth != null ? sentThisMonth : 0L;
+            if (monthToDate + amountCents > limits.getMonthlyVolumeLimitCents()) {
+                return new LimitCheckResponse(
+                        false,
+                        "Would exceed the monthly send limit of " + vnd(limits.getMonthlyVolumeLimitCents()),
+                        Math.max(0L, remaining)
+                );
+            }
+
+            return new LimitCheckResponse(true, "Transaction allowed", Math.max(0L, remaining - amountCents));
         } else {
             if (!limits.isDailyReceiveWithinLimit(usage.getTotalReceivedCents(), amountCents)) {
                 Long remaining = limits.getDailyReceiveLimitCents() - usage.getTotalReceivedCents();
@@ -176,6 +209,24 @@ public class LimitServiceImpl implements LimitService {
     public boolean canReceive(UUID userId, Long amountCents) {
         LimitCheckResponse response = checkTransactionAllowed(userId, amountCents, "receive");
         return response.allowed();
+    }
+
+    /**
+     * Outgoing payments recorded in the current clock hour, from the day's
+     * hourly_sent_counts ({"14": 3}). Unreadable data counts as none: a
+     * corrupt counter must not block every payment.
+     */
+    private int sentInCurrentHour(DailyUsage usage) {
+        String counts = usage.getHourlySentCounts();
+        if (counts == null || counts.isBlank()) {
+            return 0;
+        }
+        try {
+            return objectMapper.readTree(counts).path(DailyUsage.hourKey(LocalTime.now())).asInt(0);
+        } catch (JsonProcessingException e) {
+            log.warn("Unreadable hourly_sent_counts for user {}: {}", usage.getUser().getId(), e.getMessage());
+            return 0;
+        }
     }
 
     /**

@@ -4,6 +4,7 @@ import com.xupay.user.dto.response.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -124,6 +125,24 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Sign-in blocked after too many failures -> 429, with Retry-After in
+     * seconds and the wait in the message for people.
+     */
+    @ExceptionHandler(TooManyLoginAttemptsException.class)
+    public ResponseEntity<ErrorResponse> handleTooManyLoginAttempts(
+            TooManyLoginAttemptsException ex, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+            .header(HttpHeaders.RETRY_AFTER, String.valueOf(ex.getRetryAfterSeconds()))
+            .body(new ErrorResponse(
+                OffsetDateTime.now(),
+                HttpStatus.TOO_MANY_REQUESTS.value(),
+                HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(),
+                ex.getMessage(),
+                request.getRequestURI()
+            ));
+    }
+
+    /**
      * Handle AccountSuspendedException -> 403 FORBIDDEN
      */
     @ExceptionHandler(AccountSuspendedException.class)
@@ -234,6 +253,27 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(
             Exception ex, HttpServletRequest request) {
+        // Spring MVC's own exceptions - no such route, wrong HTTP method,
+        // unsupported media type - carry their real status. Answering them
+        // as a 500 "unexpected error" turned every mistyped URL into a
+        // server error with a logged stack trace.
+        if (ex instanceof org.springframework.web.ErrorResponse framework) {
+            HttpStatus status = HttpStatus.resolve(framework.getStatusCode().value());
+            if (status != null && status.is4xxClientError()) {
+                log.warn("Client error {} on {}: {}", status.value(), request.getRequestURI(), ex.getMessage());
+                String detail = framework.getBody().getDetail();
+                return ResponseEntity.status(status)
+                    .headers(framework.getHeaders())
+                    .body(new ErrorResponse(
+                        OffsetDateTime.now(),
+                        status.value(),
+                        status.getReasonPhrase(),
+                        detail != null ? detail : status.getReasonPhrase(),
+                        request.getRequestURI()
+                    ));
+            }
+        }
+
         log.error("Unexpected error occurred", ex);
         
         ErrorResponse error = new ErrorResponse(

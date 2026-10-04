@@ -37,6 +37,27 @@ spring:
       write-dates-as-timestamps: false
     default-property-inclusion: non_null
 
+  # Redis holds revoked tokens (logout) and failed sign-in counters. Both are
+  # best effort: if Redis is down, requests are let through and the failure
+  # is logged. The short timeout keeps an outage from stalling every request.
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:R3d1sP@ss2025!}
+      timeout: ${SPRING_DATA_REDIS_TIMEOUT:2000}
+      connect-timeout: 2000
+      repositories:
+        enabled: false  # plain key/value use; the repositories here are JPA
+
+# Health must not turn DOWN when Redis is unreachable: the service keeps
+# serving without it (see above), and a DOWN health would fail the Docker
+# healthcheck.
+management:
+  health:
+    redis:
+      enabled: false
+
 server:
   port: 8081
   servlet:
@@ -62,6 +83,16 @@ xupay:
   admin:
     email: ${XUPAY_ADMIN_EMAIL:}
     password: ${XUPAY_ADMIN_PASSWORD:}
+  # Shared secret the Payment Service presents on every gRPC call (see
+  # ServiceTokenGrpcInterceptor). Same local default as payment-service;
+  # Docker passes GRPC_SERVICE_TOKEN to both.
+  grpc:
+    service-token: ${GRPC_SERVICE_TOKEN:xupay-local-dev-grpc-service-token-change-me}
+  # The sign-in cookie (see AuthCookies). Secure = sent over HTTPS only: set
+  # AUTH_COOKIE_SECURE=true wherever the app is served over HTTPS. Off by
+  # default because local development runs on plain http://localhost.
+  auth:
+    cookie-secure: ${AUTH_COOKIE_SECURE:false}
 
 jwt:
   secret: ${JWT_SECRET:xupay-super-secret-key-minimum-256-bits-for-production-use-only}

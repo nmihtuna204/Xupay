@@ -118,9 +118,15 @@ public class KycServiceImpl implements KycService {
         // Reject document
         document.reject(adminId, request.verificationNotes());
 
-        // Update user KYC status
+        // Update user KYC status - unless another of their documents is still
+        // waiting for review. A REJECTED account cannot transact at all, so
+        // rejecting one blurry photo used to block a user whose other, valid
+        // document had not been looked at yet. (Submitting a document is what
+        // makes an account PENDING; see uploadDocument.)
         User user = document.getUser();
-        if (user.isPending()) {
+        boolean otherDocumentPending = kycDocumentRepository
+                .existsByUserIdAndVerificationStatusAndIdNot(user.getId(), "PENDING", documentId);
+        if (user.isPending() && !otherDocumentPending) {
             user.rejectKyc();
             userRepository.save(user);
             log.info("User {} KYC rejected", user.getId());

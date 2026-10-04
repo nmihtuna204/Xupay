@@ -30,6 +30,13 @@ public interface AuthService {
     AuthResponse login(LoginRequest request);
 
     /**
+     * Sign one token out: it is refused from now until it expires, by this
+     * service and by payment-service. The user's other sessions keep working.
+     * @param token JWT token string; an invalid or expired one is ignored
+     */
+    void logout(String token);
+
+    /**
      * Validate JWT token
      * @param token JWT token string
      * @return true if valid, false otherwise

@@ -2,6 +2,7 @@ package com.xupay.user.service;
 
 import com.xupay.user.config.JwtConfig;
 import com.xupay.user.entity.User;
+import com.xupay.user.security.RevokedTokenStore;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,10 @@ import java.util.UUID;
  * JwtService
  * Handles JWT token generation, validation, and parsing.
  * Uses HMAC-SHA256 (HS256) algorithm for signing.
+ *
+ * Every token carries a unique ID (the jti claim) so that signing out can
+ * revoke that one token (see RevokedTokenStore) without touching the user's
+ * other sessions.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,7 @@ import java.util.UUID;
 public class JwtService {
 
     private final JwtConfig jwtConfig;
+    private final RevokedTokenStore revokedTokens;
 
     /**
      * Generate JWT token for authenticated user
@@ -51,6 +57,7 @@ public class JwtService {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)  // User ID
+                .id(UUID.randomUUID().toString())  // jti: what sign-out revokes
                 .issuer(jwtConfig.getIssuer())
                 .audience().add(jwtConfig.getAudience()).and()
                 .issuedAt(now)
@@ -61,14 +68,22 @@ public class JwtService {
 
     /**
      * Validate JWT token
-     * Returns true if token is valid and not expired
+     * Returns true if the token is genuine, not expired and not signed out
      */
     public boolean validateToken(String token) {
         try {
-            Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token);
+            String tokenId = getClaimsFromToken(token).getId();
+            // Tokens from before sign-out could revoke them have no ID, so
+            // they could never be signed out: refuse them. Signing in again
+            // issues one that has an ID.
+            if (tokenId == null) {
+                log.warn("JWT token has no ID (jti), refusing it");
+                return false;
+            }
+            if (revokedTokens.isRevoked(tokenId)) {
+                log.debug("JWT token {} was signed out", tokenId);
+                return false;
+            }
             return true;
         } catch (ExpiredJwtException e) {
             log.warn("JWT token is expired: {}", e.getMessage());
@@ -76,12 +91,33 @@ public class JwtService {
             log.error("JWT token is unsupported: {}", e.getMessage());
         } catch (MalformedJwtException e) {
             log.error("JWT token is malformed: {}", e.getMessage());
-        } catch (SecurityException e) {
+        } catch (JwtException e) {
+            // A bad signature is io.jsonwebtoken.security.SignatureException.
+            // This caught java.lang.SecurityException, which jjwt never throws,
+            // so forged tokens escaped this method as an exception instead of
+            // a false.
             log.error("JWT signature validation failed: {}", e.getMessage());
         } catch (IllegalArgumentException e) {
             log.error("JWT claims string is empty: {}", e.getMessage());
         }
         return false;
+    }
+
+    /**
+     * Sign a token out: from now until it expires it is refused here and by
+     * payment-service. A token that is already invalid (forged, expired,
+     * malformed) needs nothing.
+     */
+    public void revokeToken(String token) {
+        Claims claims;
+        try {
+            claims = getClaimsFromToken(token);
+        } catch (JwtException | IllegalArgumentException e) {
+            return;
+        }
+        if (claims.getId() != null) {
+            revokedTokens.revoke(claims.getId(), claims.getExpiration().toInstant());
+        }
     }
 
     /**

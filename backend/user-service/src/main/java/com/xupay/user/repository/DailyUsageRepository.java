@@ -59,25 +59,36 @@ public interface DailyUsageRepository extends JpaRepository<DailyUsage, UUID> {
      * @Modifying query without one fails with TransactionRequiredException.
      * The columns are the per-direction counters the table actually has
      * (there is no transaction_count column).
+     *
+     * hourly_sent_counts keeps one counter per clock hour of the day,
+     * {"09": 2, "14": 1}, keyed by {@link com.xupay.user.entity.DailyUsage#hourKey}:
+     * it is what the per-hour transaction limit is checked against.
      */
     @Transactional
     @Modifying
     @Query(value = """
         INSERT INTO daily_usage (id, user_id, usage_date, total_sent_cents, total_sent_count,
-                                 total_received_cents, total_received_count,
+                                 total_received_cents, total_received_count, hourly_sent_counts,
                                  created_at, updated_at)
         VALUES (gen_random_uuid(), :userId, :usageDate, :amountCents, 1, 0, 0,
+                jsonb_build_object(CAST(:hourKey AS text), 1),
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT (user_id, usage_date)
-        DO UPDATE SET 
+        DO UPDATE SET
             total_sent_cents = daily_usage.total_sent_cents + :amountCents,
             total_sent_count = daily_usage.total_sent_count + 1,
+            hourly_sent_counts = jsonb_set(
+                COALESCE(daily_usage.hourly_sent_counts, CAST('{}' AS jsonb)),
+                ARRAY[CAST(:hourKey AS text)],
+                to_jsonb(COALESCE(CAST(daily_usage.hourly_sent_counts ->> CAST(:hourKey AS text) AS integer), 0) + 1)
+            ),
             updated_at = CURRENT_TIMESTAMP
         """, nativeQuery = true)
     void incrementSentAmount(
         @Param("userId") UUID userId,
         @Param("usageDate") LocalDate usageDate,
-        @Param("amountCents") Long amountCents
+        @Param("amountCents") Long amountCents,
+        @Param("hourKey") String hourKey
     );
 
     /**

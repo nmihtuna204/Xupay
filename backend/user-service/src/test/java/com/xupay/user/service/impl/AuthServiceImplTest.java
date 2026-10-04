@@ -97,7 +97,7 @@ class AuthServiceImplTest {
     @Test
     void register_ValidRequest_CreatesUserSuccessfully() {
         // Arrange
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(anyString())).thenReturn(false);
         when(userRepository.existsByPhone(anyString())).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPasswordHash");
         when(userRepository.save(any(User.class))).thenReturn(testUser);
@@ -134,7 +134,7 @@ class AuthServiceImplTest {
     @Test
     void register_DuplicateEmail_ThrowsDuplicateEmailException() {
         // Arrange
-        when(userRepository.existsByEmail("john.doe@example.com")).thenReturn(true);
+        when(userRepository.existsByEmailIgnoreCase("john.doe@example.com")).thenReturn(true);
 
         // Act & Assert
         assertThatThrownBy(() -> authService.register(validRegisterRequest))
@@ -146,7 +146,7 @@ class AuthServiceImplTest {
     @Test
     void register_DuplicatePhone_ThrowsDuplicatePhoneException() {
         // Arrange
-        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByEmailIgnoreCase(anyString())).thenReturn(false);
         when(userRepository.existsByPhone("+1234567890")).thenReturn(true);
 
         // Act & Assert
@@ -156,12 +156,69 @@ class AuthServiceImplTest {
         verify(userRepository, never()).save(any(User.class));
     }
 
+    @Test
+    void register_MixedCaseEmail_IsStoredLowercase() {
+        RegisterRequest mixedCase = new RegisterRequest(
+                "  John.Doe@Example.COM ", "SecurePassword123!", "John", "Doe", null, null);
+        when(userRepository.existsByEmailIgnoreCase("john.doe@example.com")).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPasswordHash");
+        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(jwtService.generateToken(any(User.class))).thenReturn("mock.jwt.token");
+
+        authService.register(mixedCase);
+
+        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(userCaptor.capture());
+        assertThat(userCaptor.getValue().getEmail()).isEqualTo("john.doe@example.com");
+    }
+
+    @Test
+    void register_EmailTakenInAnotherCase_ThrowsDuplicateEmailException() {
+        RegisterRequest shouting = new RegisterRequest(
+                "JOHN.DOE@EXAMPLE.COM", "SecurePassword123!", "John", "Doe", null, null);
+        when(userRepository.existsByEmailIgnoreCase("john.doe@example.com")).thenReturn(true);
+
+        assertThatThrownBy(() -> authService.register(shouting))
+                .isInstanceOf(DuplicateEmailException.class);
+        verify(userRepository, never()).save(any(User.class));
+    }
+
     // ==================== LOGIN TESTS ====================
+
+    @Test
+    void login_EmailInAnotherCase_FindsTheAccount() {
+        // The repository's own lookup order: exact, then lowercase, then case-insensitive
+        when(userRepository.findByEmailNormalized(anyString())).thenCallRealMethod();
+        when(userRepository.findByEmail("John.Doe@Example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("SecurePassword123!", testUser.getPasswordHash())).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(jwtService.generateToken(any(User.class))).thenReturn("mock.jwt.token");
+
+        AuthResponse response = authService.login(new LoginRequest(" John.Doe@Example.com", "SecurePassword123!"));
+
+        assertThat(response.userId()).isEqualTo(testUser.getId());
+    }
+
+    @Test
+    void login_LegacyMixedCaseAccount_IsFoundCaseInsensitively() {
+        testUser.setEmail("John.Doe@example.com"); // stored before emails were normalised
+        when(userRepository.findByEmailNormalized(anyString())).thenCallRealMethod();
+        when(userRepository.findFirstByEmailIgnoreCaseOrderByCreatedAtAsc("john.doe@example.com"))
+                .thenReturn(Optional.of(testUser));
+        when(passwordEncoder.matches("SecurePassword123!", testUser.getPasswordHash())).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(testUser);
+        when(jwtService.generateToken(any(User.class))).thenReturn("mock.jwt.token");
+
+        AuthResponse response = authService.login(validLoginRequest);
+
+        assertThat(response.userId()).isEqualTo(testUser.getId());
+    }
 
     @Test
     void login_ValidCredentials_ReturnsAuthResponse() {
         // Arrange
-        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailNormalized("john.doe@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("SecurePassword123!", testUser.getPasswordHash())).thenReturn(true);
         when(userRepository.save(any(User.class))).thenReturn(testUser);
         when(jwtService.generateToken(any(User.class))).thenReturn("mock.jwt.token");
@@ -183,7 +240,7 @@ class AuthServiceImplTest {
     @Test
     void login_InvalidEmail_ThrowsInvalidCredentialsException() {
         // Arrange
-        when(userRepository.findByEmail("wrong@example.com")).thenReturn(Optional.empty());
+        when(userRepository.findByEmailNormalized("wrong@example.com")).thenReturn(Optional.empty());
 
         LoginRequest invalidRequest = new LoginRequest("wrong@example.com", "password");
 
@@ -195,7 +252,7 @@ class AuthServiceImplTest {
     @Test
     void login_InvalidPassword_ThrowsInvalidCredentialsException() {
         // Arrange
-        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailNormalized("john.doe@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("WrongPassword", testUser.getPasswordHash())).thenReturn(false);
 
         LoginRequest invalidRequest = new LoginRequest("john.doe@example.com", "WrongPassword");
@@ -211,7 +268,7 @@ class AuthServiceImplTest {
     void login_InactiveAccount_ThrowsInvalidCredentialsException() {
         // Arrange
         testUser.setIsActive(false);
-        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailNormalized("john.doe@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("SecurePassword123!", testUser.getPasswordHash())).thenReturn(true);
 
         // Act & Assert
@@ -224,12 +281,23 @@ class AuthServiceImplTest {
     void login_SuspendedAccount_ThrowsAccountSuspendedException() {
         // Arrange
         testUser.setIsSuspended(true);
-        when(userRepository.findByEmail("john.doe@example.com")).thenReturn(Optional.of(testUser));
+        when(userRepository.findByEmailNormalized("john.doe@example.com")).thenReturn(Optional.of(testUser));
         when(passwordEncoder.matches("SecurePassword123!", testUser.getPasswordHash())).thenReturn(true);
 
         // Act & Assert
         assertThatThrownBy(() -> authService.login(validLoginRequest))
                 .isInstanceOf(AccountSuspendedException.class);
+    }
+
+    // ==================== LOGOUT TESTS ====================
+
+    @Test
+    void logout_RevokesTheToken() {
+        // Act
+        authService.logout("session.jwt.token");
+
+        // Assert
+        verify(jwtService).revokeToken("session.jwt.token");
     }
 
     // ==================== TOKEN VALIDATION TESTS ====================

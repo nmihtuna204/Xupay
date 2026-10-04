@@ -42,7 +42,9 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            // Disable CSRF (stateless JWT authentication)
+            // Spring's CSRF tokens are off: the API is stateless. The sign-in
+            // cookie is SameSite=Strict, and on state-changing requests it
+            // only counts together with X-Requested-With (see RequestToken).
             .csrf(AbstractHttpConfigurer::disable)
             
             // Configure CORS
@@ -54,6 +56,8 @@ public class SecurityConfig {
                 .requestMatchers(
                     "/api/auth/register",
                     "/api/auth/login",
+                    // Must work with an expired token too: it clears the cookie
+                    "/api/auth/logout",
                     "/actuator/health",
                     "/actuator/info",
                     "/v3/api-docs/**",
@@ -95,11 +99,11 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // Allow frontend origins (localhost for development)
+        // The web app's origins only. With the sign-in cookie, any origin
+        // allowed here (with credentials) can call the API as the signed-in
+        // user and read the answers, so nothing else belongs on this list.
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:3000",  // React dev server
-            "http://localhost:5173",  // Vite dev server
-            "http://localhost:4200",  // Angular dev server
+            "http://localhost:3000",  // Next.js frontend
             "https://xupay.com"       // Production domain
         ));
         
@@ -122,10 +126,11 @@ public class SecurityConfig {
         // Expose headers to frontend
         configuration.setExposedHeaders(Arrays.asList(
             "Authorization",
-            "X-Total-Count"
+            "X-Total-Count",
+            "Retry-After"   // 429 on sign-in: seconds until it is allowed again
         ));
         
-        // Allow credentials (cookies, authorization headers)
+        // Allow credentials: the sign-in cookie
         configuration.setAllowCredentials(true);
         
         // Cache preflight response for 1 hour

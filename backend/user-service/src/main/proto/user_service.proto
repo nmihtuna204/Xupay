@@ -56,6 +56,7 @@ message RecordTransactionRequest {
   int64 amount_cents = 2;
   string transaction_type = 3;  // "send" or "receive"
   string transaction_id = 4;  // For idempotency tracking
+  string counterparty_user_id = 5;  // Other party of a transfer (UUID); empty for deposits/withdrawals
 }
 
 // =====================================================

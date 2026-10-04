@@ -2,9 +2,11 @@ package com.xupay.user.repository;
 
 import com.xupay.user.entity.UserContact;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -85,6 +87,25 @@ public interface UserContactRepository extends JpaRepository<UserContact, UUID> 
      * Count contacts for a user
      */
     long countByUserId(UUID userId);
+
+    /**
+     * One more transfer from userId to contactUserId: bumps that contact's
+     * count and last-used time if contactUserId is in userId's contacts, and
+     * does nothing otherwise. A single UPDATE, so concurrent transfers each
+     * count. Called by the gRPC RecordTransaction handler, which runs outside
+     * any transaction, hence @Transactional here.
+     *
+     * @return the number of contact rows updated (0 or 1)
+     */
+    @Transactional
+    @Modifying
+    @Query("UPDATE UserContact c SET c.totalTransactions = c.totalTransactions + 1, c.lastTransactionAt = :at " +
+           "WHERE c.user.id = :userId AND c.contactUser.id = :contactUserId")
+    int recordTransfer(
+        @Param("userId") UUID userId,
+        @Param("contactUserId") UUID contactUserId,
+        @Param("at") OffsetDateTime at
+    );
 
     /**
      * Delete contact relationship

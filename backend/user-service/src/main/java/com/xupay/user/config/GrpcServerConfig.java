@@ -7,9 +7,9 @@ import org.springframework.context.annotation.Configuration;
  * gRPC Server Configuration
  * Registers global interceptors for all gRPC services
  * 
- * Interceptor Order:
- * 1. LoggingGrpcInterceptor - Logs request/response
- * 2. JwtGrpcInterceptor - Validates JWT authentication
+ * Interceptors:
+ * - LoggingGrpcInterceptor - Logs request/response
+ * - ServiceTokenGrpcInterceptor - Only the Payment Service (shared service token) may call
  */
 @Configuration
 @RequiredArgsConstructor

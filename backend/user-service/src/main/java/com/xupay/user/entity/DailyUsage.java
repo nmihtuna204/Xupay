@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
 
@@ -124,6 +125,15 @@ public class DailyUsage {
      */
     public double getTotalReceivedDollars() {
         return totalReceivedCents / 100.0;
+    }
+
+    /**
+     * The hourly_sent_counts key for a time of day: two-digit hour, "00".."23".
+     * The writer (RecordTransaction) and the reader (the per-hour limit check)
+     * must agree on it.
+     */
+    public static String hourKey(LocalTime time) {
+        return String.format("%02d", time.getHour());
     }
 
     /**

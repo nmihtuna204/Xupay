@@ -158,6 +158,77 @@ class KycControllerTest {
     }
 
     @Test
+    @DisplayName("GET /api/kyc/{id} - An admin can view anyone's document")
+    void getDocument_adminCanViewOtherUsersDocument() throws Exception {
+        KycDocumentResponse response = new KycDocumentResponse(
+            testDocId, testUserId, DocumentType.PASSPORT, "P1234567", "USA",
+            "https://s3.amazonaws.com/bucket/passport.jpg", "PENDING",
+            null, null, null, null, OffsetDateTime.now()
+        );
+        when(kycService.getDocumentById(testDocId)).thenReturn(response);
+
+        mockMvc.perform(get("/api/kyc/" + testDocId)
+                .principal(mockAdminPrincipal)
+                .with(request -> {
+                    request.addUserRole("ADMIN");
+                    return request;
+                }))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.id").value(testDocId.toString()));
+    }
+
+    @Test
+    @DisplayName("POST /api/kyc/upload-document - A file sent as a data URL is accepted at real-photo size")
+    void uploadDocument_acceptsLargeDataUrl() throws Exception {
+        // ~150 KB of base64: far past the old 500-character limit
+        String dataUrl = "data:image/jpeg;base64," + "A".repeat(150_000);
+        UploadKycDocumentRequest request = new UploadKycDocumentRequest(
+            DocumentType.NATIONAL_ID, "ID-1", "VNM", dataUrl, "image/jpeg", 112_000L
+        );
+        when(kycService.uploadDocument(eq(testUserId), any(UploadKycDocumentRequest.class)))
+            .thenReturn(new KycDocumentResponse(
+                testDocId, testUserId, DocumentType.NATIONAL_ID, "ID-1", "VNM", dataUrl, "PENDING",
+                null, null, null, null, OffsetDateTime.now()));
+
+        mockMvc.perform(post("/api/kyc/upload-document")
+                .principal(mockPrincipal)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isCreated());
+    }
+
+    @Test
+    @DisplayName("POST /api/kyc/upload-document - A javascript: URL is refused")
+    void uploadDocument_rejectsScriptUrl() throws Exception {
+        UploadKycDocumentRequest request = new UploadKycDocumentRequest(
+            DocumentType.NATIONAL_ID, null, null, "javascript:alert(document.cookie)", "image/jpeg", 100L
+        );
+
+        mockMvc.perform(post("/api/kyc/upload-document")
+                .principal(mockPrincipal)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /api/kyc/upload-document - An HTML data URL is refused")
+    void uploadDocument_rejectsHtmlDataUrl() throws Exception {
+        UploadKycDocumentRequest request = new UploadKycDocumentRequest(
+            DocumentType.NATIONAL_ID, null, null, "data:text/html;base64,PHNjcmlwdD4=", "image/jpeg", 100L
+        );
+
+        mockMvc.perform(post("/api/kyc/upload-document")
+                .principal(mockPrincipal)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("GET /api/kyc/pending - Should return pending documents for admin")
     @WithMockUser(username = "admin-id", roles = {"ADMIN"}) // Note: roles usually need filters=true to work automatically
     void getPendingDocuments_shouldReturnPendingList() throws Exception {
